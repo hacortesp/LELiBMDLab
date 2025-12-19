@@ -79,7 +79,6 @@ class InputsBuilder:
         solvents: List[str],
         solvent_fracs: List[float],
         margin: float,
-        sim_name: str,
         charge_scale: float,
     ) -> None:
 
@@ -89,15 +88,14 @@ class InputsBuilder:
         self.solvents = solvents
         self.solvent_fracs = solvent_fracs
         self.margin = margin
-        self.sim_name = sim_name
         self.charge_scale = charge_scale
 
         # Assets live with the code
         self.asset_dir = Path(__file__).resolve().parent
-
         # Outputs live where builder.py is executed
         self.work_dir = Path.cwd()
-        self.input_root = self.work_dir / "input_files"
+        self.sim_dir = self.work_dir / "input_files"
+        self.packmol_dir = self.sim_dir / "packmol"
 
         self.counts: dict | None = None
 
@@ -108,15 +106,58 @@ class InputsBuilder:
     # ========================================================
 
     def run(self) -> None:
+        print("=== Box ===")
+        print(f"Lx, Ly, Lz [Å] = {self.box}")
+
         self.compute_counts()
+        c = self.counts
+
+        print(f"V_box [Å^3]    = {c['box']['V_box_A3']:.3f}")
+        print()
+
+        print("=== Salt ===")
+        print(f"Salt: {c['salt']['name']}")
+        print(f"N_pairs (int)   = {c['salt']['N_pairs']}")
+        print()
+
+        print("=== Solvents ===")
+        for name, info in c["solvents"].items():
+            print(
+                f"{name}: N_float = {info['N_float']:.3f}, "
+                f"N = {info['N']}, V_i [Å^3] = {info['V_i_A3']:.3f}"
+            )
+        print()
+
+        print(f"Charge scaling factor: {self.charge_scale:.4f}")
+        print()
+
+        print("Creating simulation folders...")
         self.create_simulation_folders()
-        self.write_packmol_input()
+
+        inp = self.write_packmol_input()
+        inp_path = self.packmol_dir / "conf_gen.inp"
+        inp_path.write_text(inp)
+
+        print(f"Packmol input written to: {self.packmol_dir}")
+        print(f"Running Packmol")
         self.run_packmol()
-        self.add_cryst1()
-        self.copy_forcefield_files()
+        print("Packmol finished. conf.pdb and packmol.log generated.")
+
+        self.copy_gromacs_files()
         self.apply_charge_scaling()
         self.generate_topology()
         self.write_run_scripts()
+
+        print()
+        print(f"Simulation folder created at: {self.sim_dir}")
+        print("Key files:")
+        print("  - conf.pdb")
+        print("  - topol.top")
+        print("  - minim.mdp, npt_new_eq.mdp, npt_new_data.mdp")
+        print("  - run_local.sh")
+        print("  - run_cluster.sh")
+      
+
 
     # ========================================================
     # 1. COUNTS
@@ -139,14 +180,29 @@ class InputsBuilder:
 
         solvents = {}
         for name, frac in zip(self.solvents, norm_fracs):
-            V_i = frac * V_solvent_A3
+            V_i_A3 = frac * V_solvent_A3
             Vmol = SOLVENT_DATA[name]["Vmol"]
-            N_i_float = V_i / Vmol
-            solvents[name] = {"N": max(1, int(round(N_i_float)))}
+            N_float = V_i_A3 / Vmol
+            solvents[name] = {
+                "N_float": N_float,
+                "N": max(1, int(round(N_float))),
+                "V_i_A3": V_i_A3,
+            }
 
         self.counts = {
-            "box": {"Lx": Lx, "Ly": Ly, "Lz": Lz},
-            "salt": {"N_pairs": N_pairs},
+            "box": {
+                "Lx": Lx,
+                "Ly": Ly,
+                "Lz": Lz,
+                "V_box_A3": V_box_A3,
+                "V_box_L": V_box_L,
+            },
+            "salt": {
+                "name": self.salt,
+                "N_pairs_float": N_pairs_float,
+                "N_pairs": N_pairs,
+                "V_salt_A3": V_salt_A3,
+            },
             "solvents": solvents,
         }
 
@@ -155,10 +211,6 @@ class InputsBuilder:
     # ========================================================
 
     def create_simulation_folders(self) -> None:
-        self.input_root.mkdir(exist_ok=True)
-
-        self.sim_dir = self.input_root / self.sim_name
-        self.packmol_dir = self.sim_dir / "packmol"
         self.sim_dir.mkdir(exist_ok=True)
         self.packmol_dir.mkdir(exist_ok=True)
 
@@ -181,50 +233,82 @@ class InputsBuilder:
     def write_packmol_input(self) -> None:
         Lx, Ly, Lz = self.box
         m = self.margin
+
         x0, y0, z0 = m, m, m
         x1, y1, z1 = Lx - m, Ly - m, Lz - m
 
         lines = [
+            "# Auto-generated Packmol input",
             "tolerance 2.0",
             "filetype pdb",
             "output conf.pdb",
             "",
+            "seed 42",
+            "",
         ]
 
-        N = self.counts["salt"]["N_pairs"]
         salt = SALT_DATA[self.salt]
+        N = self.counts["salt"]["N_pairs"]
 
-        for pdb in (salt["cation_pdb"], salt["anion_pdb"]):
-            lines += [
-                f"structure {pdb}",
-                f"   number {N}",
-                f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} {x1:.3f} {y1:.3f} {z1:.3f}",
-                "end structure",
-                "",
-            ]
+        # Li+
+        lines.extend([
+            "# >>>>> Electrolyte cation",
+            f"structure {salt['cation_pdb']}",
+            f"   number {N}",
+            "   resnumbers 3",
+            f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} "
+            f"{x1:.3f} {y1:.3f} {z1:.3f}",
+            "   nloop 500",
+            "end structure",
+            "",
+        ])
 
-        for name in self.solvents:
-            N = self.counts["solvents"][name]["N"]
-            lines += [
+        # PF6-
+        lines.extend([
+            "# >>>>> Electrolyte anion",
+            f"structure {salt['anion_pdb']}",
+            f"   number {N}",
+            "   resnumbers 3",
+            f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} "
+            f"{x1:.3f} {y1:.3f} {z1:.3f}",
+            "   nloop 500",
+            "end structure",
+            "",
+        ])
+
+        # Solvents
+        for name, info in self.counts["solvents"].items():
+            lines.extend([
+                f"# >>>>> Solvent: {name}",
                 f"structure {SOLVENT_PDB_MAP[name]}",
-                f"   number {N}",
-                f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} {x1:.3f} {y1:.3f} {z1:.3f}",
+                f"   number {info['N']}",
+                "   resnumbers 3",
+                f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} "
+                f"{x1:.3f} {y1:.3f} {z1:.3f}",
+                "   nloop 500",
                 "end structure",
                 "",
-            ]
+            ])
 
-        (self.packmol_dir / "conf_gen.inp").write_text("\n".join(lines))
+        return "\n".join(lines) + "\n"
 
     def run_packmol(self) -> None:
-        with open(self.packmol_dir / "conf_gen.inp") as fin, \
-             open(self.packmol_dir / "packmol.log", "w") as flog:
-            subprocess.run(
+        inp_path = self.packmol_dir / "conf_gen.inp"
+        log_path = self.packmol_dir / "packmol.log"
+
+        with inp_path.open("r") as fin, log_path.open("w") as flog:
+            result = subprocess.run(
                 [PACKMOL_EXE],
                 stdin=fin,
                 stdout=flog,
                 stderr=subprocess.STDOUT,
                 cwd=self.packmol_dir,
-                check=True,
+            )
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Packmol failed (code {result.returncode}). "
+                f"Check {log_path}"
             )
 
     def add_cryst1(self) -> None:
@@ -235,18 +319,23 @@ class InputsBuilder:
         cryst1 = f"CRYST1{Lx:9.3f}{Ly:9.3f}{Lz:9.3f}  90.00  90.00  90.00 P 1           1"
         pdb.write_text("\n".join([cryst1] + atoms) + "\n")
 
+        src = self.packmol_dir / "conf.pdb"
+        dst = self.sim_dir / "conf.pdb"
+        shutil.copy2(src, dst)
+
     # ========================================================
     # 4. GROMACS FILES
     # ========================================================
 
-    def copy_forcefield_files(self) -> None:
-        shutil.copytree(self.asset_dir / "forcefield", self.sim_dir / "forcefield", dirs_exist_ok=True)
-        shutil.copytree(self.asset_dir / "itp", self.sim_dir / "itp", dirs_exist_ok=True)
-
+    def copy_gromacs_files(self) -> None:
         mdp_src = self.asset_dir / "mdp"
+
+        if not mdp_src.exists():
+            raise FileNotFoundError(f"Missing mdp directory: {mdp_src}")
+
         for mdp in ("minim.mdp", "npt_new_eq.mdp", "npt_new_data.mdp"):
             shutil.copy2(mdp_src / mdp, self.sim_dir / mdp)
-
+            
     def apply_charge_scaling(self) -> None:
         if abs(self.charge_scale - 1.0) < 1e-8:
             return
@@ -272,14 +361,19 @@ class InputsBuilder:
 
     def generate_topology(self) -> None:
         top = self.sim_dir / "topol.top"
+
+        ff = self.asset_dir / "forcefield"
+        itp = self.asset_dir / "itp"
+
         lines = [
-            '; Auto-generated topology',
-            '#include "forcefield/forcefield.itp"',
-            f'#include "itp/Li.itp"',
-            f'#include "itp/PF6.itp"',
+            "; Auto-generated topology",
+            f'#include "{ff / "forcefield.itp"}"',
+            f'#include "{itp / "Li.itp"}"',
+            f'#include "{itp / "PF6.itp"}"',
         ]
+
         for s in self.solvents:
-            lines.append(f'#include "itp/{SOLVENT_ITP_MAP[s]}"')
+            lines.append(f'#include "{itp / SOLVENT_ITP_MAP[s]}"')
 
         lines += ["", "[ system ]", "Electrolyte system", "", "[ molecules ]"]
         N = self.counts["salt"]["N_pairs"]
@@ -289,7 +383,60 @@ class InputsBuilder:
 
         top.write_text("\n".join(lines))
 
-    def write_run_scripts(self) -> None:
+    def write_run_scripts(self) -> None:        
         run_local = self.sim_dir / "run_local.sh"
-        run_local.write_text("#!/bin/bash\nset -e\n")
+        run_cluster = self.sim_dir / "run_cluster.sh"
+
+        local_text = """#!/bin/bash
+set -e
+
+# Energy minimization
+gmx grompp -f minim.mdp -c conf.pdb   -p topol.top -o em.tpr
+gmx mdrun  -v -deffnm em
+
+# NPT equilibration
+gmx grompp -f npt_new_eq.mdp   -c em.gro     -p topol.top -o npt_eq.tpr -maxwarn 1
+gmx mdrun  -deffnm npt_eq
+
+# NPT production
+gmx grompp -f npt_new_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1
+gmx mdrun  -deffnm npt_data
+"""
+        run_local.write_text(local_text)
         os.chmod(run_local, 0o755)
+
+        cluster_text = """#!/bin/bash
+#SBATCH --account=bcam-exclusive
+#SBATCH --partition=bcam-exclusive
+########SBATCH --partition=regular 
+#SBATCH --job-name=npt_data_traPPE
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=48
+#SBATCH --mem=50gb
+#SBATCH --cpus-per-task=1
+#SBATCH --time=3-00:00:00
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
+
+module load GROMACS/2019.4-foss-2021a 
+
+echo "-------">> /home/oorozco/reporte_jobs/job_log.txt
+
+# Energy minimization
+mpirun -np 1               gmx_mpi grompp -f minim.mdp        -c conf.pdb   -p topol.top -o em.tpr
+mpirun -np $SLURM_NTASKS   gmx_mpi mdrun  -deffnm em
+
+# NPT equilibration
+mpirun -np 1               gmx_mpi grompp -f npt_new_eq.mdp   -c em.gro     -p topol.top -o npt_eq.tpr -maxwarn 1
+mpirun -np $SLURM_NTASKS   gmx_mpi mdrun  -deffnm npt_eq
+
+# NPT production
+mpirun -np 1               gmx_mpi grompp -f npt_new_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1
+mpirun -np $SLURM_NTASKS   gmx_mpi mdrun  -deffnm npt_data
+
+"""
+        run_cluster.write_text(cluster_text)
+        os.chmod(run_cluster, 0o755)
+
+
+    

@@ -54,14 +54,7 @@ def parse_args():
         default=0.5,
         help="Margin in Å for Packmol (default: 0.5).",
     )
-
-    parser.add_argument(
-        "-sim-name",
-        type=str,
-        default="input_files",
-        help="Simulation folder name.",
-    )
-
+    
     parser.add_argument(
         "-charge-scale",
         type=float,
@@ -77,7 +70,7 @@ def main() -> None:
 
     start = timer()
 
-    # 🔥 CrySF-style: constructor DOES the work
+    #constructor DOES the work
     InputsBuilder(
         box=args.box,
         salt=args.salt,
@@ -85,7 +78,6 @@ def main() -> None:
         solvents=args.solvents,
         solvent_fracs=args.solvent_fracs,
         margin=args.margin,
-        sim_name=args.sim_name,
         charge_scale=args.charge_scale,
     )
 
