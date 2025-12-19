@@ -1,0 +1,16 @@
+; Auto-generated topology
+#include "/home/hacortes/Li-EMDLab/libraries/forcefield/forcefield.itp"
+
+#include "/home/hacortes/Li-EMDLab/libraries/itp/Li.itp"
+#include "/home/hacortes/Li-EMDLab/libraries/itp/PF6.itp"
+#include "/home/hacortes/Li-EMDLab/libraries/itp/EC_TraPPE.itp"
+#include "/home/hacortes/Li-EMDLab/libraries/itp/DMC_TraPPE.itp"
+
+[ system ]
+Electrolyte system
+
+[ molecules ]
+Li 39
+PF6 39
+EC 260
+DMC 204

@@ -62,6 +62,14 @@ def parse_args():
         help="Charge scaling factor (default: 1.0).",
     )
 
+    parser.add_argument(
+        "-run_mode",
+        type=str,
+        choices=("local", "server"),
+        default="local",
+        help="Execution mode: local or server (default: local).",
+    )
+
     return parser.parse_args()
 
 
@@ -79,6 +87,7 @@ def main() -> None:
         solvent_fracs=args.solvent_fracs,
         margin=args.margin,
         charge_scale=args.charge_scale,
+        run_mode=args.run_mode,
     )
 
     end = timer()

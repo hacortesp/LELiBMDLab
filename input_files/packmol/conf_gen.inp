@@ -1,0 +1,39 @@
+# Auto-generated Packmol input
+tolerance 2.0
+filetype pdb
+output conf.pdb
+
+seed 42
+
+# >>>>> Electrolyte cation
+structure Li.pdb
+   number 39
+   resnumbers 3
+   inside box 0.500 0.500 0.500 39.500 39.500 39.500
+   nloop 500
+end structure
+
+# >>>>> Electrolyte anion
+structure PF6.pdb
+   number 39
+   resnumbers 3
+   inside box 0.500 0.500 0.500 39.500 39.500 39.500
+   nloop 500
+end structure
+
+# >>>>> Solvent: EC
+structure EC_UA.pdb
+   number 260
+   resnumbers 3
+   inside box 0.500 0.500 0.500 39.500 39.500 39.500
+   nloop 500
+end structure
+
+# >>>>> Solvent: DMC
+structure DMC_UA.pdb
+   number 204
+   resnumbers 3
+   inside box 0.500 0.500 0.500 39.500 39.500 39.500
+   nloop 500
+end structure
+
