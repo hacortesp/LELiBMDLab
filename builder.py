@@ -1,6 +1,6 @@
 import argparse
 from timeit import default_timer as timer
-from libraries.InputsBuilder import InputsBuilder, SALT_DATA
+from LEMDLab.InputsBuilder import InputsBuilder
 
 
 def parse_args():
@@ -21,7 +21,6 @@ def parse_args():
         "-salt",
         type=str,
         default="LiPF6",
-        choices=SALT_DATA.keys(),
         help="Salt name (default: LiPF6).",
     )
 
@@ -73,27 +72,23 @@ def parse_args():
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
+args = parse_args()
 
-    start = timer()
+start = timer()
 
-    #constructor DOES the work
-    InputsBuilder(
-        box=args.box,
-        salt=args.salt,
-        salt_conc=args.salt_conc,
-        solvents=args.solvents,
-        solvent_fracs=args.solvent_fracs,
-        margin=args.margin,
-        charge_scale=args.charge_scale,
-        run_mode=args.run_mode,
-    )
+#constructor DOES the work
+InputsBuilder(
+    box=args.box,
+    salt=args.salt,
+    salt_conc=args.salt_conc,
+    solvents=args.solvents,
+    solvent_fracs=args.solvent_fracs,
+    margin=args.margin,
+    charge_scale=args.charge_scale,
+    run_mode=args.run_mode,
+)
 
-    end = timer()
-    elapsed_time = (end - start) / 60
-    print(f"\nTime elapsed = {elapsed_time:.4f} minutes")
+end = timer()
+elapsed_time = (end - start) / 60
+print(f"\nTime elapsed = {elapsed_time:.4f} minutes")
 
-
-if __name__ == "__main__":
-    main()

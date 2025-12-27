@@ -1,10 +1,10 @@
 ; Auto-generated topology
-#include "/home/hacortes/Li-EMDLab/libraries/forcefield/forcefield.itp"
+#include "/home/hacortes/Li-EMDLab/LEMDLab/forcefield/forcefield.itp"
 
-#include "/home/hacortes/Li-EMDLab/libraries/itp/Li.itp"
-#include "/home/hacortes/Li-EMDLab/libraries/itp/PF6.itp"
-#include "/home/hacortes/Li-EMDLab/libraries/itp/EC_TraPPE.itp"
-#include "/home/hacortes/Li-EMDLab/libraries/itp/DMC_TraPPE.itp"
+#include "/home/hacortes/Li-EMDLab/LEMDLab/itp/Li.itp"
+#include "/home/hacortes/Li-EMDLab/LEMDLab/itp/PF6.itp"
+#include "/home/hacortes/Li-EMDLab/LEMDLab/itp/EC_TraPPE.itp"
+#include "/home/hacortes/Li-EMDLab/LEMDLab/itp/DMC_TraPPE.itp"
 
 [ system ]
 Electrolyte system
