@@ -1,6 +1,6 @@
 import argparse
 from timeit import default_timer as timer
-from LEMDLab.InputsBuilder import InputsBuilder
+from LEMDLab.SimulationCell import Builder
 
 
 def parse_args():
@@ -46,13 +46,6 @@ def parse_args():
         default=[0.5, 0.5],
         help="Relative solvent volume fractions (default: 0.5 0.5).",
     )
-
-    parser.add_argument(
-        "-margin",
-        type=float,
-        default=0.5,
-        help="Margin in Å for Packmol (default: 0.5).",
-    )
     
     parser.add_argument(
         "-charge-scale",
@@ -62,11 +55,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        "-run_mode",
+        "-workdir",
         type=str,
-        choices=("local", "server"),
-        default="local",
-        help="Execution mode: local or server (default: local).",
+        default="./simulation_test",
+        help="Working directory for simulation files (default: workdir).",
     )
 
     return parser.parse_args()
@@ -77,15 +69,15 @@ args = parse_args()
 start = timer()
 
 #constructor DOES the work
-InputsBuilder(
+Builder(
     box=args.box,
     salt=args.salt,
     salt_conc=args.salt_conc,
     solvents=args.solvents,
     solvent_fracs=args.solvent_fracs,
-    margin=args.margin,
     charge_scale=args.charge_scale,
-    run_mode=args.run_mode,
+    workdir=args.workdir,
+
 )
 
 end = timer()

@@ -1,5 +1,6 @@
 # Auto-generated Packmol input
 tolerance 2.0
+add_box_sides 0.0
 filetype pdb
 output conf.pdb
 

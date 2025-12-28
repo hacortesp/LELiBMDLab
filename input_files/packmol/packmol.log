@@ -13,6 +13,8 @@
   Userguide at: http://m3g.iqm.unicamp.br/packmol 
 
   Reading input file... (Control-C aborts)
+  Will print BOX SIDE informations. 
+  Will sum    0.0000000000000000       to each side length on print
   Seed for random number generator:           42
   Output file: conf.pdb
   Reading coordinate file: Li.pdb
@@ -340,7 +342,7 @@
 
 --------------------------------------------------------------------------------
 
-   Running time:    1.06064701      seconds. 
+   Running time:   0.787661970      seconds. 
 
 --------------------------------------------------------------------------------
 

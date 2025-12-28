@@ -65,7 +65,7 @@ if PACKMOL_EXE is None:
 # INPUTS BUILDER CLASS
 # ============================================================
 
-class InputsBuilder:
+class Builder:
     """
     Faithful class adaptation of the original Packmol + GROMACS builder.
     Outputs are created in ./input_files relative to execution directory.
@@ -78,9 +78,8 @@ class InputsBuilder:
         salt_conc: float,
         solvents: List[str],
         solvent_fracs: List[float],
-        margin: float,
         charge_scale: float,
-        run_mode: str,
+        workdir: str,
     ) -> None:
 
         self.box = box
@@ -88,16 +87,15 @@ class InputsBuilder:
         self.salt_conc = salt_conc
         self.solvents = solvents
         self.solvent_fracs = solvent_fracs
-        self.margin = margin
         self.charge_scale = charge_scale
-        self.run_mode = run_mode
+        self.workdir = workdir
 
         # Assets live with the code
         self.asset_dir = Path(__file__).resolve().parent
         # Outputs live where builder.py is executed
-        self.work_dir = Path.cwd()
-        self.sim_dir = self.work_dir / "input_files"
-        self.packmol_dir = self.sim_dir / "packmol"
+        self.base_dir = Path.cwd()
+        self.sim_dir = self.base_dir / self.workdir
+        self.packmol_dir = self.sim_dir / "simulation_cell"
 
         self.counts: dict | None = None
 
@@ -142,23 +140,8 @@ class InputsBuilder:
         self.run_packmol()
         print("Packmol finished. conf.pdb and packmol.log generated.")
         print()
-        self.add_cryst1()
-        self.copy_gromacs_files()
-        self.apply_charge_scaling()
-        self.generate_topology()
-        self.write_run_scripts()
-
-        print()
-        print(f"Simulation folder created at: {self.sim_dir}")
-        print("Key files:")
-        print("  - conf.pdb")
-        print("  - topol.top")
-        print("  - minim.mdp, npt_new_eq.mdp, npt_new_data.mdp")
-        print("  - run_local.sh")
-        print("  - run_cluster.sh")
+        
       
-
-
     # ========================================================
     # 1. COUNTS
     # ========================================================
@@ -232,7 +215,7 @@ class InputsBuilder:
 
     def write_packmol_input(self) -> None:
         Lx, Ly, Lz = self.box
-        m = self.margin
+        m = 0.5
 
         x0, y0, z0 = m, m, m
         x1, y1, z1 = Lx - m, Ly - m, Lz - m
@@ -240,6 +223,7 @@ class InputsBuilder:
         lines = [
             "# Auto-generated Packmol input",
             "tolerance 2.0",
+            "add_box_sides 0.5",
             "filetype pdb",
             "output conf.pdb",
             "",
@@ -257,7 +241,7 @@ class InputsBuilder:
             f"   number {N}",
             "   resnumbers 3",
             f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} "
-            f"{x1:.3f} {y1:.3f} {z1:.3f}",
+            f"{Lx:.3f} {Ly:.3f} {Lz:.3f}",
             "   nloop 500",
             "end structure",
             "",
@@ -311,149 +295,8 @@ class InputsBuilder:
                 f"Check {log_path}"
             )
 
-    def add_cryst1(self) -> None:
-        pdb = self.packmol_dir / "conf.pdb"
-        lines = pdb.read_text().splitlines()
-        atoms = [l for l in lines if l.startswith(("ATOM", "HETATM"))]
-        Lx, Ly, Lz = self.box
-        cryst1 = f"CRYST1{Lx:9.3f}{Ly:9.3f}{Lz:9.3f}  90.00  90.00  90.00 P 1           1"
-        pdb.write_text("\n".join([cryst1] + atoms) + "\n")
 
         src = self.packmol_dir / "conf.pdb"
         dst = self.sim_dir / "conf.pdb"
         shutil.copy2(src, dst)
 
-    # ========================================================
-    # 4. GROMACS FILES
-    # ========================================================
-
-    def copy_gromacs_files(self) -> None:
-        mdp_src = self.asset_dir / "mdp"
-
-        if not mdp_src.exists():
-            raise FileNotFoundError(f"Missing mdp directory: {mdp_src}")
-
-        for mdp in ("minim.mdp", "npt_new_eq.mdp", "npt_new_data.mdp"):
-            shutil.copy2(mdp_src / mdp, self.sim_dir / mdp)
-            
-    def apply_charge_scaling(self) -> None:
-        itp_dir = self.asset_dir / "itp"
-
-        for f in itp_dir.glob("*0p*.itp"):
-            f.unlink()
-            
-        if abs(self.charge_scale - 1.0) < 1e-8:
-            print("No charge scaling applied.")
-            print()
-            self.scaled_itp = None
-            return
-
-        print(f"Charge scaling factor: {self.charge_scale:.4f}")
-        print()
-
-        scale_tag = f"{self.charge_scale:.4f}".replace(".", "p")
-
-        self.scaled_itp = {
-            "Li": f"Li_{scale_tag}.itp",
-            "PF6": f"PF6_{scale_tag}.itp",
-        }
-
-        for base, has_mass in [("Li", True), ("PF6", False)]:
-            src = itp_dir / f"{base}.itp"
-            dst = itp_dir / self.scaled_itp[base]
-
-            lines = src.read_text().splitlines()
-            new = []
-            in_atoms = False
-
-            for line in lines:
-                s = line.strip()
-                if s.startswith("["):
-                    in_atoms = s.lower().startswith("[ atoms")
-                    new.append(line)
-                    continue
-
-                if in_atoms and s and not s.startswith(";"):
-                    t = s.split()
-                    idx = -2 if has_mass else -1
-                    t[idx] = f"{float(t[idx]) * self.charge_scale:.4f}"
-                    new.append("  " + "  ".join(t))
-                else:
-                    new.append(line)
-
-            dst.write_text("\n".join(new) + "\n")
-
-            print(f"Charge-scaled ITP written: {dst}")
-
-    def generate_topology(self) -> None:
-        top = self.sim_dir / "topol.top"
-
-        ff = self.asset_dir / "forcefield"
-        itp = self.asset_dir / "itp"
-
-        # Select ITPs depending on charge scaling
-        if getattr(self, "scaled_itp", None):
-            li_itp = self.scaled_itp["Li"]
-            pf6_itp = self.scaled_itp["PF6"]
-        else:
-            li_itp = "Li.itp"
-            pf6_itp = "PF6.itp"
-
-        lines = [
-            "; Auto-generated topology",
-            f'#include "{ff / "forcefield.itp"}"\n',
-            f'#include "{itp / li_itp}"',
-            f'#include "{itp / pf6_itp}"',
-        ]
-        for s in self.solvents:
-            lines.append(f'#include "{itp / SOLVENT_ITP_MAP[s]}"')
-
-        lines += ["", "[ system ]", "Electrolyte system", "", "[ molecules ]"]
-        N = self.counts["salt"]["N_pairs"]
-        lines += [f"Li {N}", f"PF6 {N}"]
-        for s in self.solvents:
-            lines.append(f"{s} {self.counts['solvents'][s]['N']}")
-
-        top.write_text("\n".join(lines))
-
-    def write_run_scripts(self) -> None:
-        if self.run_mode == "local":
-            run_local = self.sim_dir / "run_local.sh"
-            run_local.write_text("""#!/bin/bash
-    set -e
-
-    gmx grompp -f minim.mdp -c conf.pdb -p topol.top -o em.tpr
-    gmx mdrun -v -deffnm em
-
-    gmx grompp -f npt_new_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1
-    gmx mdrun -deffnm npt_eq
-
-    gmx grompp -f npt_new_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1
-    gmx mdrun -deffnm npt_data
-    """)
-            os.chmod(run_local, 0o755)
-            print("Local run script created: run_local.sh")
-
-        elif self.run_mode == "server":
-            run_cluster = self.sim_dir / "run_cluster.sh"
-            run_cluster.write_text("""#!/bin/bash
-    #SBATCH --job-name=npt_data
-    #SBATCH --nodes=1
-    #SBATCH --ntasks-per-node=48
-    #SBATCH --time=3-00:00:00
-
-    module load GROMACS/2019.4
-
-    mpirun -np 1 gmx_mpi grompp -f minim.mdp -c conf.pdb -p topol.top -o em.tpr
-    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm em
-
-    mpirun -np 1 gmx_mpi grompp -f npt_new_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1
-    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm npt_eq
-
-    mpirun -np 1 gmx_mpi grompp -f npt_new_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1
-    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm npt_data
-    """)
-            os.chmod(run_cluster, 0o755)
-            print("Cluster run script created: run_cluster.sh")
-
-    
