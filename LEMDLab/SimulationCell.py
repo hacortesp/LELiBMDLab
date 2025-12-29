@@ -78,7 +78,6 @@ class Builder:
         salt_conc: float,
         solvents: List[str],
         solvent_fracs: List[float],
-        charge_scale: float,
         workdir: str,
     ) -> None:
 
@@ -87,7 +86,6 @@ class Builder:
         self.salt_conc = salt_conc
         self.solvents = solvents
         self.solvent_fracs = solvent_fracs
-        self.charge_scale = charge_scale
         self.workdir = workdir
 
         # Assets live with the code
@@ -107,24 +105,22 @@ class Builder:
 
     def run(self) -> None:
         print("=== Box ===")
-        print(f"Lx, Ly, Lz [Å] = {self.box}")
+        print(f"{self.box[0]} [Å] x {self.box[1]} [Å] x {self.box[2]} [Å]")
 
         self.compute_counts()
         c = self.counts
 
-        print(f"V_box [Å^3]    = {c['box']['V_box_A3']:.3f}")
+        print(f"V_box [Å^3]: {c['box']['V_box_A3']:.3f}")
         print()
 
         print("=== Salt ===")
-        print(f"Salt: {c['salt']['name']}")
-        print(f"N_pairs (int)   = {c['salt']['N_pairs']}")
+        print(f"{c['salt']['name']}: {c['salt']['N_pairs']}")
         print()
 
         print("=== Solvents ===")
         for name, info in c["solvents"].items():
             print(
-                f"{name}: N_float = {info['N_float']:.3f}, "
-                f"N = {info['N']}, V_i [Å^3] = {info['V_i_A3']:.3f}"
+                f"{name}: {info['N']} "
             )
         print()
 

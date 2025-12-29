@@ -1,0 +1,40 @@
+    def write_run_scripts(self) -> None:
+        if self.run_mode == "local":
+            run_local = self.sim_dir / "run_local.sh"
+            run_local.write_text("""#!/bin/bash
+    set -e
+
+    gmx grompp -f minim.mdp -c conf.pdb -p topol.top -o em.tpr
+    gmx mdrun -v -deffnm em
+
+    gmx grompp -f npt_new_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1
+    gmx mdrun -deffnm npt_eq
+
+    gmx grompp -f npt_new_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1
+    gmx mdrun -deffnm npt_data
+    """)
+            os.chmod(run_local, 0o755)
+            print("Local run script created: run_local.sh")
+
+        elif self.run_mode == "server":
+            run_cluster = self.sim_dir / "run_cluster.sh"
+            run_cluster.write_text("""#!/bin/bash
+    #SBATCH --job-name=npt_data
+    #SBATCH --nodes=1
+    #SBATCH --ntasks-per-node=48
+    #SBATCH --time=3-00:00:00
+
+    module load GROMACS/2019.4
+
+    mpirun -np 1 gmx_mpi grompp -f minim.mdp -c conf.pdb -p topol.top -o em.tpr
+    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm em
+
+    mpirun -np 1 gmx_mpi grompp -f npt_new_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1
+    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm npt_eq
+
+    mpirun -np 1 gmx_mpi grompp -f npt_new_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1
+    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm npt_data
+    """)
+            os.chmod(run_cluster, 0o755)
+            print("Cluster run script created: run_cluster.sh")
+

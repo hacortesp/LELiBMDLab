@@ -75,7 +75,6 @@ Builder(
     salt_conc=args.salt_conc,
     solvents=args.solvents,
     solvent_fracs=args.solvent_fracs,
-    charge_scale=args.charge_scale,
     workdir=args.workdir,
 
 )

@@ -7,22 +7,62 @@ import subprocess
 from pathlib import Path
 from typing import List, Dict
 import shutil as _shutil
+from SimulationCell import SOLVENT_ITP_MAP
 
 
 
-self.copy_gromacs_files()
-self.apply_charge_scaling()
-self.generate_topology()
-self.write_run_scripts()
+class MDsim:
+    """
+    Faithful class adaptation of the original Packmol + GROMACS builder.
+    Outputs are created in ./input_files relative to execution directory.
+    """
 
-print()
-print(f"Simulation folder created at: {self.sim_dir}")
-print("Key files:")
-print("  - conf.pdb")
-print("  - topol.top")
-print("  - minim.mdp, npt_new_eq.mdp, npt_new_data.mdp")
-print("  - run_local.sh")
-print("  - run_cluster.sh")
+    def __init__(
+        self,
+        box: List[float],
+        salt: str,
+        salt_conc: float,
+        solvents: List[str],
+        solvent_fracs: List[float],
+        charge_scale: float,
+        workdir: str,
+    ) -> None:
+
+        self.box = box
+        self.salt = salt
+        self.salt_conc = salt_conc
+        self.solvents = solvents
+        self.solvent_fracs = solvent_fracs
+        self.charge_scale = charge_scale
+        self.workdir = workdir
+
+        # Assets live with the code
+        self.asset_dir = Path(__file__).resolve().parent
+        # Outputs live where builder.py is executed
+        self.base_dir = Path.cwd()
+        self.sim_dir = self.base_dir / self.workdir
+        self.packmol_dir = self.sim_dir / "simulation_cell"
+
+        self.counts: dict | None = None
+
+        self.run()
+
+    def run(self) -> None:            
+        self.copy_gromacs_files()
+        self.apply_charge_scaling()
+        self.generate_topology()
+        self.write_run_scripts()
+
+        print()
+        print(f"Simulation folder created at: {self.sim_dir}")
+        print("Key files:")
+        print("  - conf.pdb")
+        print("  - topol.top")
+        print("  - minim.mdp, npt_new_eq.mdp, npt_new_data.mdp")
+        print("  - run_local.sh")
+        print("  - run_cluster.sh")
+
+
     # ========================================================
     # 4. GROMACS FILES
     # ========================================================
