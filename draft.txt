@@ -38,3 +38,150 @@
             os.chmod(run_cluster, 0o755)
             print("Cluster run script created: run_cluster.sh")
 
+
+
+
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from typing import List, Dict
+import shutil as _shutil
+from SimulationCell import SOLVENT_ITP_MAP
+
+
+
+class MDsim:
+    """
+    Faithful class adaptation of the original Packmol + GROMACS builder.
+    Outputs are created in ./input_files relative to execution directory.
+    """
+
+    def __init__(
+        self,
+        salt: str,
+        charge_scale: float,
+        workdir: str,
+    ) -> None:
+        
+        self.salt = salt
+        self.charge_scale = charge_scale
+        self.workdir = workdir
+
+        # Assets live with the code
+        self.asset_dir = Path(__file__).resolve().parent
+        self.base_dir = Path.cwd()
+        self.sim_dir = self.base_dir / self.workdir  
+        self.packmol_dir = self.sim_dir / "simulation_cell"
+        self.run()
+
+    def run(self) -> None:            
+        self.copy_gromacs_files()
+        self.apply_charge_scaling()
+        self.generate_topology()
+
+
+        print()
+        print(f"Simulation folder created at: {self.sim_dir}")
+        print("Key files:")
+        print("  - conf.pdb")
+        print("  - topol.top")
+        print("  - minim.mdp, npt_new_eq.mdp, npt_new_data.mdp")
+
+
+
+    # ========================================================
+    # 4. GROMACS FILES
+    # ========================================================
+
+    def copy_gromacs_files(self) -> None:
+        mdp_src = self.asset_dir / "mdp"
+
+        if not mdp_src.exists():
+            raise FileNotFoundError(f"Missing mdp directory: {mdp_src}")
+
+        for mdp in ("minim.mdp", "npt_new_eq.mdp", "npt_new_data.mdp"):
+            shutil.copy2(mdp_src / mdp, self.sim_dir / mdp)
+            
+    def apply_charge_scaling(self) -> None:
+        itp_dir = self.asset_dir / "itp"
+
+        for f in itp_dir.glob("*0p*.itp"):
+            f.unlink()
+            
+        if abs(self.charge_scale - 1.0) < 1e-8:
+            print("No charge scaling applied.")
+            print()
+            self.scaled_itp = None
+            return
+
+        print(f"Charge scaling factor: {self.charge_scale:.4f}")
+        print()
+
+        scale_tag = f"{self.charge_scale:.4f}".replace(".", "p")
+
+        self.scaled_itp = {
+            "Li": f"Li_{scale_tag}.itp",
+            "PF6": f"PF6_{scale_tag}.itp",
+        }
+
+        for base, has_mass in [("Li", True), ("PF6", False)]:
+            src = itp_dir / f"{base}.itp"
+            dst = itp_dir / self.scaled_itp[base]
+
+            lines = src.read_text().splitlines()
+            new = []
+            in_atoms = False
+
+            for line in lines:
+                s = line.strip()
+                if s.startswith("["):
+                    in_atoms = s.lower().startswith("[ atoms")
+                    new.append(line)
+                    continue
+
+                if in_atoms and s and not s.startswith(";"):
+                    t = s.split()
+                    idx = -2 if has_mass else -1
+                    t[idx] = f"{float(t[idx]) * self.charge_scale:.4f}"
+                    new.append("  " + "  ".join(t))
+                else:
+                    new.append(line)
+
+            dst.write_text("\n".join(new) + "\n")
+
+            print(f"Charge-scaled ITP written: {dst}")
+
+    def generate_topology(self) -> None:
+        top = self.sim_dir / "topol.top"
+
+        ff = self.asset_dir / "forcefield"
+        itp = self.asset_dir / "itp"
+
+        # Select ITPs depending on charge scaling
+        if getattr(self, "scaled_itp", None):
+            li_itp = self.scaled_itp["Li"]
+            pf6_itp = self.scaled_itp["PF6"]
+        else:
+            li_itp = "Li.itp"
+            pf6_itp = "PF6.itp"
+
+        lines = [
+            "; Auto-generated topology",
+            f'#include "{ff / "forcefield.itp"}"\n',
+            f'#include "{itp / li_itp}"',
+            f'#include "{itp / pf6_itp}"',
+        ]
+        for s in self.solvents:
+            lines.append(f'#include "{itp / SOLVENT_ITP_MAP[s]}"')
+
+        lines += ["", "[ system ]", "Electrolyte system", "", "[ molecules ]"]
+        N = self.counts["salt"]["N_pairs"]
+        lines += [f"Li {N}", f"PF6 {N}"]
+        for s in self.solvents:
+            lines.append(f"{s} {self.counts['solvents'][s]['N']}")
+
+        top.write_text("\n".join(lines))

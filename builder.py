@@ -1,6 +1,7 @@
 import argparse
 from timeit import default_timer as timer
 from LEMDLab.SimulationCell import Builder
+from LEMDLab.MDSimulation import MDsim
 
 
 def parse_args():
@@ -46,19 +47,19 @@ def parse_args():
         default=[0.5, 0.5],
         help="Relative solvent volume fractions (default: 0.5 0.5).",
     )
-    
-    parser.add_argument(
-        "-charge-scale",
-        type=float,
-        default=1.0,
-        help="Charge scaling factor (default: 1.0).",
-    )
 
     parser.add_argument(
         "-workdir",
         type=str,
         default="./simulation_test",
         help="Working directory for simulation files (default: workdir).",
+    )
+
+    parser.add_argument(
+        "-charge-scale",
+        type=float,
+        default=1.0,
+        help="Charge scaling factor (default: 1.0).",
     )
 
     return parser.parse_args()
@@ -78,6 +79,13 @@ Builder(
     workdir=args.workdir,
 
 )
+
+
+MDsim(
+    charge_scale=args.charge_scale,
+    workdir=args.workdir,
+)
+
 
 end = timer()
 elapsed_time = (end - start) / 60

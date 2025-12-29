@@ -31,15 +31,6 @@ SOLVENT_PDB_MAP = {
     "EMC": "EMC_UA.pdb",
 }
 
-SOLVENT_ITP_MAP = {
-    "EC": "EC_TraPPE.itp",
-    "PC": "PC_TraPPE.itp",
-    "DMC": "DMC_TraPPE.itp",
-    "DEC": "DEC_TraPPE.itp",
-    "DME": "DME_TraPPE.itp",
-    "EMC": "EMC_TraPPE.itp",
-}
-
 SALT_DATA = {
     "LiPF6": {
         "Vmol": 168.162990597383,
@@ -48,14 +39,6 @@ SALT_DATA = {
     }
 }
 
-SALT_ITP_MAP = {
-    "LiPF6": {
-        "cation_itp": "Li.itp",
-        "anion_itp": "PF6.itp",
-        "cation_mt": "Li",
-        "anion_mt": "PF6",
-    }
-}
 
 PACKMOL_EXE = _shutil.which("packmol")
 if PACKMOL_EXE is None:

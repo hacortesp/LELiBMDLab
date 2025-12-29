@@ -1,57 +1,64 @@
-
 from __future__ import annotations
 
-import os
 import shutil
-import subprocess
 from pathlib import Path
-from typing import List, Dict
-import shutil as _shutil
-from SimulationCell import SOLVENT_ITP_MAP
+from typing import Dict
 
+
+# ============================================================
+# CONSTANTS
+# ============================================================
+
+CATION_NAME = "Li"
+
+SOLVENT_ITP_MAP = {
+    "EC": "EC_TraPPE.itp",
+    "PC": "PC_TraPPE.itp",
+    "DMC": "DMC_TraPPE.itp",
+    "DEC": "DEC_TraPPE.itp",
+    "DME": "DME_TraPPE.itp",
+    "EMC": "EMC_TraPPE.itp",
+}
+
+SALT_ANION_ITP_MAP = {
+    "PF6": "PF6.itp",
+    # "TFSI": "TFSI.itp",
+    # "FSI": "FSI.itp",
+}
 
 
 class MDsim:
     """
-    Faithful class adaptation of the original Packmol + GROMACS builder.
-    Outputs are created in ./input_files relative to execution directory.
+    Packmol + GROMACS builder.
+    Automatically detects solvents and salt species from Packmol input.
     """
 
     def __init__(
         self,
-        box: List[float],
-        salt: str,
-        salt_conc: float,
-        solvents: List[str],
-        solvent_fracs: List[float],
         charge_scale: float,
         workdir: str,
     ) -> None:
-
-        self.box = box
-        self.salt = salt
-        self.salt_conc = salt_conc
-        self.solvents = solvents
-        self.solvent_fracs = solvent_fracs
         self.charge_scale = charge_scale
         self.workdir = workdir
 
-        # Assets live with the code
         self.asset_dir = Path(__file__).resolve().parent
-        # Outputs live where builder.py is executed
         self.base_dir = Path.cwd()
         self.sim_dir = self.base_dir / self.workdir
         self.packmol_dir = self.sim_dir / "simulation_cell"
 
-        self.counts: dict | None = None
+        self.molecule_counts = self._parse_packmol_input()
+        self._classify_molecules()
 
         self.run()
 
-    def run(self) -> None:            
+    # ========================================================
+    # Orchestration
+    # ========================================================
+
+    def run(self) -> None:
         self.copy_gromacs_files()
         self.apply_charge_scaling()
         self.generate_topology()
-        self.write_run_scripts()
 
         print()
         print(f"Simulation folder created at: {self.sim_dir}")
@@ -59,48 +66,86 @@ class MDsim:
         print("  - conf.pdb")
         print("  - topol.top")
         print("  - minim.mdp, npt_new_eq.mdp, npt_new_data.mdp")
-        print("  - run_local.sh")
-        print("  - run_cluster.sh")
-
 
     # ========================================================
-    # 4. GROMACS FILES
+    # Packmol parsing
     # ========================================================
 
-    def copy_gromacs_files(self) -> None:
-        mdp_src = self.asset_dir / "mdp"
+    def _parse_packmol_input(self) -> Dict[str, int]:
+        inp = self.packmol_dir / "conf_gen.inp"
+        if not inp.exists():
+            raise FileNotFoundError(f"Missing Packmol input: {inp}")
 
-        if not mdp_src.exists():
-            raise FileNotFoundError(f"Missing mdp directory: {mdp_src}")
+        counts: Dict[str, int] = {}
+        current_mol: str | None = None
 
-        for mdp in ("minim.mdp", "npt_new_eq.mdp", "npt_new_data.mdp"):
-            shutil.copy2(mdp_src / mdp, self.sim_dir / mdp)
-            
+        for line in inp.read_text().splitlines():
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+
+            if s.lower().startswith("structure"):
+                fname = s.split()[1]
+                base = Path(fname).stem
+                current_mol = base.replace("_UA", "")
+                continue
+
+            if current_mol and s.lower().startswith("number"):
+                counts[current_mol] = int(s.split()[1])
+                current_mol = None
+
+        if not counts:
+            raise ValueError("No molecules parsed from Packmol input.")
+
+        return counts
+
+    # ========================================================
+    # Molecule classification
+    # ========================================================
+
+    def _classify_molecules(self) -> None:
+        self.solvents: Dict[str, int] = {}
+        self.anions: Dict[str, int] = {}
+
+        if CATION_NAME not in self.molecule_counts:
+            raise ValueError(f"Missing cation '{CATION_NAME}' in Packmol input.")
+
+        for mol, n in self.molecule_counts.items():
+            if mol == CATION_NAME:
+                continue
+            if mol in SOLVENT_ITP_MAP:
+                self.solvents[mol] = n
+            elif mol in SALT_ANION_ITP_MAP:
+                self.anions[mol] = n
+            else:
+                raise KeyError(f"Unknown molecule '{mol}' not in solvent or salt maps.")
+
+        if not self.anions:
+            raise ValueError("No salt anions detected.")
+
+    # ========================================================
+    # Charge scaling
+    # ========================================================
+
     def apply_charge_scaling(self) -> None:
         itp_dir = self.asset_dir / "itp"
 
         for f in itp_dir.glob("*0p*.itp"):
             f.unlink()
-            
+
         if abs(self.charge_scale - 1.0) < 1e-8:
-            print("No charge scaling applied.")
-            print()
             self.scaled_itp = None
             return
 
-        print(f"Charge scaling factor: {self.charge_scale:.4f}")
-        print()
-
         scale_tag = f"{self.charge_scale:.4f}".replace(".", "p")
+        self.scaled_itp: Dict[str, str] = {}
 
-        self.scaled_itp = {
-            "Li": f"Li_{scale_tag}.itp",
-            "PF6": f"PF6_{scale_tag}.itp",
-        }
+        species = [(CATION_NAME, True)] + [(a, False) for a in self.anions]
 
-        for base, has_mass in [("Li", True), ("PF6", False)]:
-            src = itp_dir / f"{base}.itp"
-            dst = itp_dir / self.scaled_itp[base]
+        for mol, has_mass in species:
+            src = itp_dir / f"{mol}.itp"
+            dst = itp_dir / f"{mol}_{scale_tag}.itp"
+            self.scaled_itp[mol] = dst.name
 
             lines = src.read_text().splitlines()
             new = []
@@ -123,7 +168,9 @@ class MDsim:
 
             dst.write_text("\n".join(new) + "\n")
 
-            print(f"Charge-scaled ITP written: {dst}")
+    # ========================================================
+    # Topology generation
+    # ========================================================
 
     def generate_topology(self) -> None:
         top = self.sim_dir / "topol.top"
@@ -131,69 +178,59 @@ class MDsim:
         ff = self.asset_dir / "forcefield"
         itp = self.asset_dir / "itp"
 
-        # Select ITPs depending on charge scaling
-        if getattr(self, "scaled_itp", None):
-            li_itp = self.scaled_itp["Li"]
-            pf6_itp = self.scaled_itp["PF6"]
-        else:
-            li_itp = "Li.itp"
-            pf6_itp = "PF6.itp"
-
         lines = [
             "; Auto-generated topology",
             f'#include "{ff / "forcefield.itp"}"\n',
-            f'#include "{itp / li_itp}"',
-            f'#include "{itp / pf6_itp}"',
         ]
+
+        # cation
+        li_itp = (
+            self.scaled_itp[CATION_NAME]
+            if self.scaled_itp
+            else f"{CATION_NAME}.itp"
+        )
+        lines.append(f'#include "{itp / li_itp}"')
+
+        # anions
+        for a in self.anions:
+            a_itp = (
+                self.scaled_itp[a]
+                if self.scaled_itp
+                else SALT_ANION_ITP_MAP[a]
+            )
+            lines.append(f'#include "{itp / a_itp}"')
+
+        # solvents
         for s in self.solvents:
             lines.append(f'#include "{itp / SOLVENT_ITP_MAP[s]}"')
 
-        lines += ["", "[ system ]", "Electrolyte system", "", "[ molecules ]"]
-        N = self.counts["salt"]["N_pairs"]
-        lines += [f"Li {N}", f"PF6 {N}"]
-        for s in self.solvents:
-            lines.append(f"{s} {self.counts['solvents'][s]['N']}")
+        lines += [
+            "",
+            "[ system ]",
+            "Electrolyte system",
+            "",
+            "[ molecules ]",
+        ]
 
-        top.write_text("\n".join(lines))
+        lines.append(f"{CATION_NAME} {self.molecule_counts[CATION_NAME]}")
 
-    def write_run_scripts(self) -> None:
-        if self.run_mode == "local":
-            run_local = self.sim_dir / "run_local.sh"
-            run_local.write_text("""#!/bin/bash
-    set -e
+        for a, n in self.anions.items():
+            lines.append(f"{a} {n}")
 
-    gmx grompp -f minim.mdp -c conf.pdb -p topol.top -o em.tpr
-    gmx mdrun -v -deffnm em
+        for s, n in self.solvents.items():
+            lines.append(f"{s} {n}")
 
-    gmx grompp -f npt_new_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1
-    gmx mdrun -deffnm npt_eq
+        top.write_text("\n".join(lines) + "\n")
 
-    gmx grompp -f npt_new_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1
-    gmx mdrun -deffnm npt_data
-    """)
-            os.chmod(run_local, 0o755)
-            print("Local run script created: run_local.sh")
 
-        elif self.run_mode == "server":
-            run_cluster = self.sim_dir / "run_cluster.sh"
-            run_cluster.write_text("""#!/bin/bash
-    #SBATCH --job-name=npt_data
-    #SBATCH --nodes=1
-    #SBATCH --ntasks-per-node=48
-    #SBATCH --time=3-00:00:00
+    # ========================================================
+    # GROMACS files
+    # ========================================================
 
-    module load GROMACS/2019.4
+    def copy_gromacs_files(self) -> None:
+        mdp_src = self.asset_dir / "mdp"
+        if not mdp_src.exists():
+            raise FileNotFoundError(f"Missing mdp directory: {mdp_src}")
 
-    mpirun -np 1 gmx_mpi grompp -f minim.mdp -c conf.pdb -p topol.top -o em.tpr
-    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm em
-
-    mpirun -np 1 gmx_mpi grompp -f npt_new_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1
-    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm npt_eq
-
-    mpirun -np 1 gmx_mpi grompp -f npt_new_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1
-    mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm npt_data
-    """)
-            os.chmod(run_cluster, 0o755)
-            print("Cluster run script created: run_cluster.sh")
-
-    
+        for mdp in ("minim.mdp", "npt_new_eq.mdp", "npt_new_data.mdp"):
+            shutil.copy2(mdp_src / mdp, self.sim_dir / mdp)
