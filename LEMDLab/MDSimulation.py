@@ -86,6 +86,11 @@ class MDsim:
         gmx.write_all()
         gmx.run()
 
+        self.average_volume, self.volume_frame = gmx.analyze_npt_volume(
+            start=10,
+            dt_collection=2,
+        )
+
 
     # ========================================================
     # Packmol parsing

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
-
+import numpy as np
 
 class GROMACSrun:
     """
@@ -51,10 +51,12 @@ class GROMACSrun:
     # ========================================================
 
     def _commands_local(self) -> list[str]:
+        print("\n\n\n===== Running GROMACS in LOCAL mode =====\n")
         return [
             f"{self.gmx_exec} grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr",
             f"{self.gmx_exec} mdrun -v -deffnm em",
 
+            
             f"{self.gmx_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
             f"{self.gmx_exec} mdrun -deffnm npt_eq",
 
@@ -64,23 +66,26 @@ class GROMACSrun:
             f"{self.gmx_exec} mdrun -deffnm nvt_prod",
         ]
 
+
     def _commands_parallel(self) -> list[str]:
         ntasks = os.environ.get(self.ntasks_env)
         if ntasks is None:
             raise EnvironmentError(f"{self.ntasks_env} not set")
-
+        print("\n\n\n===== Running GROMACS in PARALLEL mode =====\n")
         return [
+
             f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr",
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm em",
-
+            
             f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm npt_eq",
-
+ 
             self._command_extract_volume("npt_eq.edr", "volume.xvg"),
-
-            f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f npt_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1",
-            f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm npt_data",
+            
+            f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod.tpr -maxwarn 1",
+            f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm nvt_prod",
         ]
+
 
     # ========================================================
     # Execution
@@ -106,6 +111,56 @@ class GROMACSrun:
             f"echo 21 | {gmx} energy "
             f"-f {edr_file} -o {output_file}"
     )
+
+    def _read_volume_data(self, volume_file: Path) -> np.ndarray:
+        volumes = []
+        with volume_file.open() as file:
+            for line in file:
+                if line.startswith(("@", "#")):
+                    continue
+                parts = line.split()
+                volumes.append(float(parts[1]))
+        return np.array(volumes)
+    
+
+    def _analyze_volume(
+        self,
+        volumes: np.ndarray,
+        *,
+        start: int,
+        dt_collection: int,
+    ) -> tuple[float, int]:
+        start_time = int(start) / dt_collection
+        average_volume = np.mean(volumes[int(start_time):])
+        closest_index = int(np.argmin(np.abs(volumes - average_volume)))
+        return average_volume, closest_index
+
+    def analyze_npt_volume(
+        self,
+        *,
+        start: int = 4000,
+        dt_collection: int = 5,
+    ) -> tuple[float, int]:
+        volume_path = self.workdir / "volume.xvg"
+
+        if not volume_path.exists():
+            raise FileNotFoundError(volume_path)
+
+        volumes = self._read_volume_data(volume_path)
+        average_volume, frame_time = self._analyze_volume(
+            volumes,
+            start=start,
+            dt_collection=dt_collection,
+        )
+
+        print(
+            f"\n✔ Volume convergence in NPT equilibration\n"
+            f"  • Average volume : {average_volume:.3f}\n"
+            f"  • Frame index    : {frame_time}\n"
+        )
+
+        return average_volume, frame_time
+
 
 
     def write_em_mdp(self) -> None:
@@ -133,7 +188,7 @@ pbc             = xyz
             f"""\
 integrator              = md          
 dt                      = 0.002       
-nsteps                  = 1000 ;2000000     
+nsteps                  = 100000 ;2000000     
 tinit                   = 0
 
 nstxout                 = 0           

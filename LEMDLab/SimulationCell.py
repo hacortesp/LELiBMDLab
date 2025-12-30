@@ -87,34 +87,34 @@ class Builder:
     # ========================================================
 
     def run(self) -> None:
-        print("=== Box ===")
+        print("===== Simulation cell =====")
         print(f"{self.box[0]} [Å] x {self.box[1]} [Å] x {self.box[2]} [Å]")
 
         self.compute_counts()
         c = self.counts
 
-        print(f"V_box [Å^3]: {c['box']['V_box_A3']:.3f}")
+        print(f"V_cell [nm^3]: {c['box']['V_box_A3'] / 1000:.3f}")
         print()
 
-        print("=== Salt ===")
+        print("\n\n===== Salt =====")
         print(f"{c['salt']['name']}: {c['salt']['N_pairs']}")
         print()
 
-        print("=== Solvents ===")
+        print("\n\n===== Solvents =====")
         for name, info in c["solvents"].items():
             print(
                 f"{name}: {info['N']} "
             )
         print()
 
-        print("Creating simulation folders...")
+        print("\n\n===Creating simulation folders...===")
         self.create_simulation_folders()
 
         inp = self.write_packmol_input()
         inp_path = self.packmol_dir / "conf_gen.inp"
         inp_path.write_text(inp)
 
-        print(f"Packmol input written to: {self.packmol_dir}")
+        print(f"====Packmol input written to: {self.packmol_dir}=====")
         print(f"Running Packmol")
         self.run_packmol()
         print("Packmol finished. conf.pdb and packmol.log generated.")
