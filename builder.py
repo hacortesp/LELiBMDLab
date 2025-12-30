@@ -73,7 +73,14 @@ def parse_args():
         "-gromacs-exec",
         type=str,
         default="gmx",
-        help="GROMACS executable (default: gmx_mpi).",
+        help="GROMACS executable (default: gmx).",
+    )
+    
+    parser.add_argument(
+        "-parallel",
+        type=bool,
+        default=False,
+        help="Whether to run GROMACS in parallel (default: False).",
     )
     return parser.parse_args()
 
@@ -97,6 +104,7 @@ Builder(
 MDsim(
     charge_scale=args.charge_scale,
     workdir=args.workdir,
+    parallel=args.parallel,
     temperature=args.temperature,
     gmx_exec=args.gromacs_exec,
 

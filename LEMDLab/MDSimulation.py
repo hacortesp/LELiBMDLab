@@ -70,9 +70,6 @@ class MDsim:
         # Write and run GROMACS LAST
         self._run_gromacs()
 
-        self._final_report()
-
-
     # ========================================================
     # GROMACS orchestration
     # ========================================================

@@ -58,6 +58,8 @@ class GROMACSrun:
             f"{self.gmx_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
             f"{self.gmx_exec} mdrun -deffnm npt_eq",
 
+            self._command_extract_volume("npt_eq.edr", "volume.xvg"),
+
             f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod.tpr -maxwarn 1",
             f"{self.gmx_exec} mdrun -deffnm nvt_prod",
         ]
@@ -73,6 +75,8 @@ class GROMACSrun:
 
             f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm npt_eq",
+
+            self._command_extract_volume("npt_eq.edr", "volume.xvg"),
 
             f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f npt_data.mdp -c npt_eq.gro -p topol.top -o npt_data.tpr -maxwarn 1",
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm npt_data",
@@ -92,9 +96,17 @@ class GROMACSrun:
                 cwd=self.workdir,
             )
 
-    # ========================================================
-    # MDP writers
-    # ========================================================
+    def _command_extract_volume(
+        self,
+        edr_file: str = "npt_eq.edr",
+        output_file: str = "volume.xvg",
+    ) -> str:
+        gmx = self.gmx_mpi_exec if self.parallel else self.gmx_exec
+        return (
+            f"echo 21 | {gmx} energy "
+            f"-f {edr_file} -o {output_file}"
+    )
+
 
     def write_em_mdp(self) -> None:
         self._write(
@@ -121,7 +133,7 @@ pbc             = xyz
             f"""\
 integrator              = md          
 dt                      = 0.002       
-nsteps                  = 2000000     
+nsteps                  = 1000 ;2000000     
 tinit                   = 0
 
 nstxout                 = 0           
@@ -173,7 +185,7 @@ continuation            = no
             f"""\
 integrator              = md
 dt                      = 0.002      ; 2 fs
-nsteps                  = 6000000    ; 12 ns
+nsteps                  = 1000    ; 6000000 12 ns
 
 nstlog                  = 1000
 nstcalcenergy           = 100
