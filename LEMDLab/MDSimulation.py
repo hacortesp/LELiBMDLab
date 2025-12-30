@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 from typing import Dict
+from LEMDLab.GROMACSrun import GROMACSrun
 
 
 # ============================================================
@@ -37,35 +38,57 @@ class MDsim:
         self,
         charge_scale: float,
         workdir: str,
+        temperature: float = 298.0,
+        *,
+        parallel: bool = False,
+        gmx_exec: str = "gmx",
+        gmx_mpi_exec: str = "gmx_mpi",
+
     ) -> None:
         self.charge_scale = charge_scale
         self.workdir = workdir
+        self.temp = temperature
 
+        self.parallel = parallel
+        self.gmx_exec = gmx_exec
+        self.gmx_mpi_exec = gmx_mpi_exec
+
+        
         self.asset_dir = Path(__file__).resolve().parent
         self.base_dir = Path.cwd()
         self.sim_dir = self.base_dir / self.workdir
         self.packmol_dir = self.sim_dir / "simulation_cell"
 
+        # Packmol → system definition
         self.molecule_counts = self._parse_packmol_input()
         self._classify_molecules()
 
-        self.run()
-
-    # ========================================================
-    # Orchestration
-    # ========================================================
-
-    def run(self) -> None:
-        self.copy_gromacs_files()
+        # Build simulation (no execution yet)
         self.apply_charge_scaling()
         self.generate_topology()
 
-        print()
-        print(f"Simulation folder created at: {self.sim_dir}")
-        print("Key files:")
-        print("  - conf.pdb")
-        print("  - topol.top")
-        print("  - minim.mdp, npt_new_eq.mdp, npt_new_data.mdp")
+        # Write and run GROMACS LAST
+        self._run_gromacs()
+
+        self._final_report()
+
+
+    # ========================================================
+    # GROMACS orchestration
+    # ========================================================
+
+    def _run_gromacs(self) -> None:
+        gmx = GROMACSrun(
+            workdir=self.sim_dir,
+            temperature=self.temp,
+            parallel=self.parallel,
+            gmx_exec=self.gmx_exec,
+            gmx_mpi_exec=self.gmx_mpi_exec,
+        )
+
+        gmx.write_all()
+        gmx.run()
+
 
     # ========================================================
     # Packmol parsing
@@ -221,16 +244,3 @@ class MDsim:
             lines.append(f"{s} {n}")
 
         top.write_text("\n".join(lines) + "\n")
-
-
-    # ========================================================
-    # GROMACS files
-    # ========================================================
-
-    def copy_gromacs_files(self) -> None:
-        mdp_src = self.asset_dir / "mdp"
-        if not mdp_src.exists():
-            raise FileNotFoundError(f"Missing mdp directory: {mdp_src}")
-
-        for mdp in ("minim.mdp", "npt_new_eq.mdp", "npt_new_data.mdp"):
-            shutil.copy2(mdp_src / mdp, self.sim_dir / mdp)

@@ -62,6 +62,19 @@ def parse_args():
         help="Charge scaling factor (default: 1.0).",
     )
 
+    parser.add_argument(
+        "-temperature",
+        type=float,
+        default=298.0,
+        help="Temperature in Kelvin (default: 298.0).",
+    )
+
+    parser.add_argument(
+        "-gromacs-exec",
+        type=str,
+        default="gmx",
+        help="GROMACS executable (default: gmx_mpi).",
+    )
     return parser.parse_args()
 
 
@@ -84,6 +97,9 @@ Builder(
 MDsim(
     charge_scale=args.charge_scale,
     workdir=args.workdir,
+    temperature=args.temperature,
+    gmx_exec=args.gromacs_exec,
+
 )
 
 
