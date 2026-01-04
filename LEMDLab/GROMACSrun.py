@@ -239,8 +239,8 @@ continuation            = no
             "nvt_prod.mdp",
             f"""\
 integrator              = md
-dt                      = 0.002      ; 2 fs
-nsteps                  = 1000    ; 6000000 12 ns
+dt                      = 0.002    ; 2 fs
+nsteps                  = 100000    ; 6000000 12 ns
 
 nstlog                  = 1000
 nstcalcenergy           = 100

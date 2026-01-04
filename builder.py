@@ -13,7 +13,7 @@ def parse_args():
         "-box",
         nargs=3,
         type=float,
-        default=[30.0, 30.0, 30.0],
+        default=[20.0, 20.0, 20.0],
         metavar=("Lx", "Ly", "Lz"),
         help="Simulation box dimensions in Å (default: 40 40 40).",
     )
