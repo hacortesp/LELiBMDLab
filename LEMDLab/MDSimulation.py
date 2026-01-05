@@ -29,10 +29,6 @@ SALT_ANION_ITP_MAP = {
 
 
 class MDsim:
-    """
-    Packmol + GROMACS builder.
-    Automatically detects solvents and salt species from Packmol input.
-    """
 
     def __init__(
         self,

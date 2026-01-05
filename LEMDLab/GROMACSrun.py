@@ -62,8 +62,10 @@ class GROMACSrun:
 
             self._command_extract_volume("npt_eq.edr", "volume.xvg"),
 
-            f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod.tpr -maxwarn 1",
-            f"{self.gmx_exec} mdrun -deffnm nvt_prod",
+            f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
+            f"{self.gmx_exec} mdrun -deffnm nvt_prod_wrap",
+
+            f"echo 0 |{self.gmx_exec} trjconv -s nvt_prod.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc"
         ]
 
 
@@ -81,9 +83,11 @@ class GROMACSrun:
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm npt_eq",
  
             self._command_extract_volume("npt_eq.edr", "volume.xvg"),
-            
-            f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod.tpr -maxwarn 1",
-            f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm nvt_prod",
+
+            f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
+            f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm nvt_prod_wrap",
+
+            f"echo 0 |mpirun -np 1 {self.gmx_mpi_exec} trjconv -s nvt_prod.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc"
         ]
 
 
@@ -108,7 +112,7 @@ class GROMACSrun:
     ) -> str:
         gmx = self.gmx_mpi_exec if self.parallel else self.gmx_exec
         return (
-            f"echo 21 | {gmx} energy "
+            f"echo 20 | {gmx} energy "
             f"-f {edr_file} -o {output_file}"
     )
 
@@ -138,8 +142,8 @@ class GROMACSrun:
     def analyze_npt_volume(
         self,
         *,
-        start: int = 4000,
-        dt_collection: int = 5,
+        start: int = 100,
+        dt_collection: int = 4,
     ) -> tuple[float, int]:
         volume_path = self.workdir / "volume.xvg"
 
@@ -153,10 +157,14 @@ class GROMACSrun:
             dt_collection=dt_collection,
         )
 
+        total_time = len(volumes) * dt_collection
+        frame_time = frame_time * dt_collection
+
         print(
-            f"\n✔ Volume convergence in NPT equilibration\n"
-            f"  • Average volume : {average_volume:.3f}\n"
-            f"  • Frame index    : {frame_time}\n"
+            f"\n Volume convergence in NPT equilibration\n"
+            f"Average volume   : {average_volume:.3f} nm^3\n"
+            f"Total time       : {total_time} ps\n"
+            f"Time closest <V> : {frame_time} ps\n"
         )
 
         return average_volume, frame_time

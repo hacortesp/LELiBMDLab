@@ -2,6 +2,7 @@ import argparse
 from timeit import default_timer as timer
 from LEMDLab.SimulationCell import Builder
 from LEMDLab.MDSimulation import MDsim
+from LEMDLab.Analysis import TrajAnalysis
 
 
 def parse_args():
@@ -13,7 +14,7 @@ def parse_args():
         "-box",
         nargs=3,
         type=float,
-        default=[20.0, 20.0, 20.0],
+        default=[30.0, 30.0, 30.0],
         metavar=("Lx", "Ly", "Lz"),
         help="Simulation box dimensions in Å (default: 40 40 40).",
     )
@@ -79,9 +80,52 @@ def parse_args():
     parser.add_argument(
         "-parallel",
         type=bool,
-        default=False,
         help="Whether to run GROMACS in parallel (default: False).",
     )
+
+    parser.add_argument(
+        "-tpr_file",
+        type=str,
+        default="nvt_prod.tpr",
+        help="GROMACS TPR file (default: nvt_prod.tpr).",
+    )
+
+    parser.add_argument(
+        "-xtc_wrap_file",
+        type=str,
+        default="nvt_prod_wrap.xtc",
+        help="GROMACS wrapped trajectory file (default: nvt_wrap.xtc).",
+    )
+
+    parser.add_argument(
+        "-xtc_unwrap_file",
+        type=str,
+        default="nvt_prod_unwrap.xtc",
+        help="GROMACS unwrapped trajectory file (default: nvt_unwrap.xtc).",
+    )
+
+    parser.add_argument(
+        "-run_end",
+        type=int,
+        default=3000,
+        help="End frame for analysis (default: 3000).",
+    )
+
+    parser.add_argument(
+        "-dt",
+        type=float,
+        default=0.002,
+        help="Timestep in ps (default: 0.002).",
+    )
+
+    parser.add_argument(
+        "-dt_collection",
+        type=float,
+        default=2000,
+        help="Data collection interval (default: 2000).",
+    )
+
+
     return parser.parse_args()
 
 
@@ -89,7 +133,7 @@ args = parse_args()
 
 start = timer()
 
-#constructor DOES the work
+
 Builder(
     box=args.box,
     salt=args.salt,
@@ -100,7 +144,7 @@ Builder(
 
 )
 
-
+"""
 MDsim(
     charge_scale=args.charge_scale,
     workdir=args.workdir,
@@ -109,6 +153,7 @@ MDsim(
     gmx_exec=args.gromacs_exec,
 
 )
+"""
 
 
 end = timer()
