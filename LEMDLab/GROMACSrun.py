@@ -65,7 +65,7 @@ class GROMACSrun:
             f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
             f"{self.gmx_exec} mdrun -deffnm nvt_prod_wrap",
 
-            f"echo 0 |{self.gmx_exec} trjconv -s nvt_prod.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc"
+            f"echo 0 |{self.gmx_exec} trjconv -s nvt_prod_wrap.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc"
         ]
 
 
@@ -87,7 +87,7 @@ class GROMACSrun:
             f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm nvt_prod_wrap",
 
-            f"echo 0 |mpirun -np 1 {self.gmx_mpi_exec} trjconv -s nvt_prod.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc"
+            f"echo 0 |mpirun -np 1 {self.gmx_mpi_exec} trjconv -s nvt_prod_wrap.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc"
         ]
 
 
@@ -142,8 +142,8 @@ class GROMACSrun:
     def analyze_npt_volume(
         self,
         *,
-        start: int = 100,
-        dt_collection: int = 4,
+        start: int,
+        dt_collection: int, 
     ) -> tuple[float, int]:
         volume_path = self.workdir / "volume.xvg"
 
@@ -162,7 +162,7 @@ class GROMACSrun:
 
         print(
             f"\n Volume convergence in NPT equilibration\n"
-            f"Average volume   : {average_volume:.3f} nm^3\n"
+            f"Average volume   : {average_volume:.3f} nm³\n"
             f"Total time       : {total_time} ps\n"
             f"Time closest <V> : {frame_time} ps\n"
         )

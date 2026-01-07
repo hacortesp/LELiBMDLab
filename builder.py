@@ -14,7 +14,7 @@ def parse_args():
         "-box",
         nargs=3,
         type=float,
-        default=[30.0, 30.0, 30.0],
+        default=[40.0, 40.0, 40.0],
         metavar=("Lx", "Ly", "Lz"),
         help="Simulation box dimensions in Å (default: 40 40 40).",
     )
@@ -86,7 +86,7 @@ def parse_args():
     parser.add_argument(
         "-tpr_file",
         type=str,
-        default="nvt_prod.tpr",
+        default="nvt_prod_wrap.tpr",
         help="GROMACS TPR file (default: nvt_prod.tpr).",
     )
 
@@ -134,6 +134,23 @@ args = parse_args()
 start = timer()
 
 
+analysis = TrajAnalysis(
+    workdir=args.workdir,
+    tpr_file=args.tpr_file,
+    xtc_wrap_file=args.xtc_wrap_file,
+    xtc_unwrap_file=args.xtc_unwrap_file,
+    dt=args.dt,
+    dt_collection=args.dt_collection,
+    temperature=args.temperature,
+    cation_name="resname LIP and name LI",
+    anion_name="resname _PF and name P1",  
+)
+
+
+cond = analysis.conductivity()
+print("Conductivity:", cond)
+
+"""
 Builder(
     box=args.box,
     salt=args.salt,
@@ -144,14 +161,13 @@ Builder(
 
 )
 
-"""
+ 
 MDsim(
     charge_scale=args.charge_scale,
     workdir=args.workdir,
     parallel=args.parallel,
     temperature=args.temperature,
     gmx_exec=args.gromacs_exec,
-
 )
 """
 

@@ -42,15 +42,15 @@
   Swap chains of molecules of structure            3 : F
   Residue numbering set for structure            4 :           3
   Swap chains of molecules of structure            4 : F
-  Number of molecules of type            1 :           16
-  Number of molecules of type            2 :           16
-  Number of molecules of type            3 :          110
-  Number of molecules of type            4 :           86
-  Total number of atoms:         1304
-  Total number of molecules:          228
+  Number of molecules of type            1 :           39
+  Number of molecules of type            2 :           39
+  Number of molecules of type            3 :          260
+  Number of molecules of type            4 :          204
+  Total number of atoms:         3096
+  Total number of molecules:          542
   Number of fixed molecules:            0
-  Number of free molecules:          228
-  Number of variables:         1368
+  Number of free molecules:          542
+  Number of variables:         3252
   Total number of fixed atoms:            0
   Maximum internal distance of type            1 :    0.0000000000000000     
   Maximum internal distance of type            2 :    3.4362325299665035     
@@ -79,38 +79,38 @@
   Packing:|0                                                             100%|
           |*******
 
-  Restraint-only function value:    5.3388557651686420E-014
-  Maximum violation of the restraints:    1.5414607172663696E-014
+  Restraint-only function value:    4.8831970089362235E-013
+  Maximum violation of the restraints:    6.9691354471186518E-014
 
 --------------------------------------------------------------------------------
 
   Molecules of type:            2
 
   Packing:|0                                                             100%|
-          |****************************
+          |***********************************
 
-  Restraint-only function value:    5.8119435809095401E-003
-  Maximum violation of the restraints:    4.4115480061970094E-003
+  Restraint-only function value:    1.2565339035196351E-002
+  Maximum violation of the restraints:    7.0715069665289558E-003
 
 --------------------------------------------------------------------------------
 
   Molecules of type:            3
 
   Packing:|0                                                             100%|
-          |********************************************************
+          |******************************************
 
-  Restraint-only function value:    7.4531768047650844E-006
-  Maximum violation of the restraints:    4.0139540967976640E-006
+  Restraint-only function value:    2.8268767887487472E-003
+  Maximum violation of the restraints:    2.7572133189155885E-003
 
 --------------------------------------------------------------------------------
 
   Molecules of type:            4
 
   Packing:|0                                                             100%|
-          |*************************************************
+          |******************************************
 
-  Restraint-only function value:    2.8780474913105294E-005
-  Maximum violation of the restraints:    1.6385681226261521E-005
+  Restraint-only function value:    0.0000000000000000     
+  Maximum violation of the restraints:    0.0000000000000000     
 
 --------------------------------------------------------------------------------
 
@@ -144,22 +144,22 @@
   Molecules of type:            3
   Adjusting random positions to fit the constraints. 
   Packing:|0                                                             100%|
-          |*******
-  Restraint-only function value:    3.4431145652872669E-004
-  Maximum violation of the restraints:    3.4431145652872669E-004
+          |**************
+  Restraint-only function value:    1.8413097051331860E-003
+  Maximum violation of the restraints:    1.8404686286089122E-003
 
 --------------------------------------------------------------------------------
 
   Molecules of type:            4
   Adjusting random positions to fit the constraints. 
   Packing:|0                                                             100%|
-          |*******
-  Restraint-only function value:    5.1921087249977445E-004
-  Maximum violation of the restraints:    5.1921087249977445E-004
+          |**************
+  Restraint-only function value:    2.5638640087960253E-005
+  Maximum violation of the restraints:    2.5638640087960253E-005
 
 ################################################################################
 
-  Objective function at initial point:    4500.7668155520514     
+  Objective function at initial point:    11121.885629265389     
 
 ################################################################################
 
@@ -168,9 +168,21 @@
 ################################################################################
 
 
-  Initial approximation is a solution. Nothing to do. 
+--------------------------------------------------------------------------------
 
-  Current point written to file: conf.pdb
+  Starting GENCAN loop:            0
+  Scaling radii by:    1.1000000000000001     
+
+  Packing:|0                                                             100%|
+          |
+
+  Function value from last GENCAN loop: f = .00000E+00
+  Best function value before: f = .12326E+01
+  Improvement from best function value:    99.99 %
+  Improvement from last loop:    99.99 %
+  Maximum violation of target distance:     0.000000
+  Maximum violation of the constraints: .00000E+00
+  Current structure written to file: conf.pdb
 --------------------------------------------------------------------------------
   Packing solved for molecules of type           1
   Objective function value:    0.0000000000000000     
@@ -185,14 +197,26 @@
 ################################################################################
 
 
-  Initial approximation is a solution. Nothing to do. 
+--------------------------------------------------------------------------------
 
-  Current point written to file: conf.pdb
+  Starting GENCAN loop:            0
+  Scaling radii by:    1.1000000000000001     
+
+  Packing:|0                                                             100%|
+          |*********************
+
+  Function value from last GENCAN loop: f = .51960E-03
+  Best function value before: f = .14463E+03
+  Improvement from best function value:    99.99 %
+  Improvement from last loop:    99.99 %
+  Maximum violation of target distance:     0.000000
+  Maximum violation of the constraints: .51960E-03
+  Current structure written to file: conf.pdb
 --------------------------------------------------------------------------------
   Packing solved for molecules of type           2
-  Objective function value:    0.0000000000000000     
+  Objective function value:    5.1959877610684472E-004
   Maximum violation of target distance:    0.0000000000000000     
-  Max. constraint violation:    0.0000000000000000     
+  Max. constraint violation:    5.1959877610684472E-004
 --------------------------------------------------------------------------------
 
 ################################################################################
@@ -209,20 +233,20 @@
 
   Packing:|0                                                             100%|
           |******************************************************************|
+          |
 
-
-  Function value from last GENCAN loop: f = .98902E-02
-  Best function value before: f = .12447E+04
+  Function value from last GENCAN loop: f = .61529E-04
+  Best function value before: f = .25177E+04
   Improvement from best function value:    99.99 %
   Improvement from last loop:    99.99 %
   Maximum violation of target distance:     0.000000
-  Maximum violation of the constraints: .86167E-02
+  Maximum violation of the constraints: .48536E-04
   Current structure written to file: conf.pdb
 --------------------------------------------------------------------------------
   Packing solved for molecules of type           3
-  Objective function value:    9.8901642981156154E-003
+  Objective function value:    6.1529304591886218E-005
   Maximum violation of target distance:    0.0000000000000000     
-  Max. constraint violation:    8.6167260368028263E-003
+  Max. constraint violation:    4.8536166703477591E-005
 --------------------------------------------------------------------------------
 
 ################################################################################
@@ -238,20 +262,21 @@
   Scaling radii by:    1.1000000000000001     
 
   Packing:|0                                                             100%|
-          |******************************************
+          |******************************************************************|
 
-  Function value from last GENCAN loop: f = .00000E+00
-  Best function value before: f = .60929E+03
+
+  Function value from last GENCAN loop: f = .47451E-07
+  Best function value before: f = .14465E+04
   Improvement from best function value:    99.99 %
   Improvement from last loop:    99.99 %
   Maximum violation of target distance:     0.000000
-  Maximum violation of the constraints: .00000E+00
+  Maximum violation of the constraints: .47451E-07
   Current structure written to file: conf.pdb
 --------------------------------------------------------------------------------
   Packing solved for molecules of type           4
-  Objective function value:    0.0000000000000000     
+  Objective function value:    4.7451304703784889E-008
   Maximum violation of target distance:    0.0000000000000000     
-  Max. constraint violation:    0.0000000000000000     
+  Max. constraint violation:    4.7451304703784889E-008
 --------------------------------------------------------------------------------
 
 ################################################################################
@@ -268,39 +293,21 @@
 
   Packing:|0                                                             100%|
           |******************************************************************|
-          |******************************************************************|
+          |********************************************************
 
-  Function value from last GENCAN loop: f = .18654E+00
-  Best function value before: f = .22197E+04
+  Function value from last GENCAN loop: f = .96917E-05
+  Best function value before: f = .62489E+04
   Improvement from best function value:    99.99 %
   Improvement from last loop:    99.99 %
   Maximum violation of target distance:     0.000000
-  Maximum violation of the constraints: .76106E-01
-
---------------------------------------------------------------------------------
-
-
---------------------------------------------------------------------------------
-
-  Starting GENCAN loop:            1
-  Scaling radii by:    1.1000000000000001     
-
-  Packing:|0                                                             100%|
-          |*********************
-
-  Function value from last GENCAN loop: f = .21808E-01
-  Best function value before: f = .18654E+00
-  Improvement from best function value:    88.31 %
-  Improvement from last loop:    88.31 %
-  Maximum violation of target distance:     0.000000
-  Maximum violation of the constraints: .63796E-02
+  Maximum violation of the constraints: .71812E-05
 
 ################################################################################
 
                                  Success! 
-              Final objective function value: .21808E-01
+              Final objective function value: .96917E-05
               Maximum violation of target distance:   0.000000
-              Maximum violation of the constraints: .63796E-02
+              Maximum violation of the constraints: .71812E-05
 
 --------------------------------------------------------------------------------
 
@@ -317,7 +324,7 @@
 
 --------------------------------------------------------------------------------
 
-   Running time:   0.289710015      seconds. 
+   Running time:   0.613395989      seconds. 
 
 --------------------------------------------------------------------------------
 

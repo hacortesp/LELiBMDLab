@@ -8,33 +8,33 @@ seed 42
 
 # >>>>> Electrolyte cation
 structure Li.pdb
-   number 16
+   number 39
    resnumbers 3
-   inside box 0.500 0.500 0.500 30.000 30.000 30.000
+   inside box 0.500 0.500 0.500 40.000 40.000 40.000
    nloop 500
 end structure
 
 # >>>>> Electrolyte anion
 structure PF6.pdb
-   number 16
+   number 39
    resnumbers 3
-   inside box 0.500 0.500 0.500 29.500 29.500 29.500
+   inside box 0.500 0.500 0.500 39.500 39.500 39.500
    nloop 500
 end structure
 
 # >>>>> Solvent: EC
 structure EC_UA.pdb
-   number 110
+   number 260
    resnumbers 3
-   inside box 0.500 0.500 0.500 29.500 29.500 29.500
+   inside box 0.500 0.500 0.500 39.500 39.500 39.500
    nloop 500
 end structure
 
 # >>>>> Solvent: DMC
 structure DMC_UA.pdb
-   number 86
+   number 204
    resnumbers 3
-   inside box 0.500 0.500 0.500 29.500 29.500 29.500
+   inside box 0.500 0.500 0.500 39.500 39.500 39.500
    nloop 500
 end structure
 

@@ -12,14 +12,8 @@ from multiprocessing import Pool
 from typing import Optional, Dict
 
 from LEMDLab.tools.msd import (
-    calc_slope_msd,
-    create_position_arrays,
-    calc_Lii_self,
-    calc_Lii,
-    calc_self_diffusion_coeff,
-    plot_msd,
-    calc_cond_msd,
-    calc_conductivity
+    compute_all_Lij,
+    write_msds
 )
 
 """
@@ -47,163 +41,71 @@ from LEMDLab.tools.coordination import (
 )
 """
 
-class TrajAnalysis:
+kb, q = 1.38E-23, 1.60E-19
 
+
+
+class TrajAnalysis:
     def __init__(
         self,
         workdir: str,
-        tpr_file: str = "nvt_prod.tpr",
+        tpr_file: str = "nvt_prod_wrap.tpr",
         xtc_wrap_file: str = "nvt_wrap.xtc",
         xtc_unwrap_file: str = "nvt_unwrap.xtc",
-        run_start: int = 0,
-        run_end: int = 3000,
         dt: float = 0.002,
-        dt_collection: int = 4,
+        dt_collection: int = 2000,
         temperature: float = 300.0,
-        select_dict: Optional[Dict[str, str]] = None,
         cation_name: str = "resname LIP and name LI",
         anion_name: str = "resname _PF and name P1",
-        polymer_name: str = "resname _EC and name C2",
+        q_eff: float = 0.85,
     ):
-
+        self.workdir = workdir
         self.xtc_wrap_file = xtc_wrap_file
         self.xtc_unwrap_file = xtc_unwrap_file
-        self.run_start = run_start
-        self.run_end = run_end
         self.dt = dt
         self.dt_collection = dt_collection
         self.temp = temperature
-        
-        self.select_dict = select_dict or {
-            self.cation_name: f"resname {self.cation_name}",
-            self.anion_name: f"resname {self.anion_name}",
-            self.polymer_name: f"resname {self.polymer_name}",
-        }
         self.cation_name = cation_name
         self.anion_name = anion_name
-        self.polymer_name = polymer_name
+        self.q_eff = q_eff
 
-        tpr_path = os.path.join(workdir, tpr_file)
-        wrap_xtc_path = os.path.join(workdir, xtc_wrap_file)
-        unwrap_xtc_path = os.path.join(workdir, xtc_unwrap_file)
+
+        tpr_path = os.path.join(self.workdir, tpr_file)
+        wrap_xtc_path = os.path.join(self.workdir, xtc_wrap_file)
+        unwrap_xtc_path = os.path.join(self.workdir, xtc_unwrap_file)
 
         self.run_wrap = mda.Universe(tpr_path, wrap_xtc_path)
         self.run_unwrap = mda.Universe(tpr_path, unwrap_xtc_path)
-        self.times = self.times_range()
 
-        self.cations_unwrap = self.run_unwrap.select_atoms(self.select_dict.get(cation_name))
-        self.anions_unwrap = self.run_unwrap.select_atoms(self.select_dict.get(anion_name))
-        self.polymers_unwrap = self.run_unwrap.select_atoms(self.select_dict.get(polymer_name))
-        self.volume = self.run_unwrap.coord.volume
-        self.box_size = self.run_unwrap.dimensions[0]
+        self.cations_unwrap = self.run_unwrap.select_atoms(cation_name)
+        self.anions_unwrap = self.run_unwrap.select_atoms(anion_name)
+        
+        self.volume = self.run_unwrap.coord.volume        
         self.num_cation = len(self.cations_unwrap)
-        self.num_o_polymer = len(self.polymers_unwrap)
-        self.num_chain = len(np.unique(self.polymers_unwrap.resids))
-        #self.num_o_chain = int(self.num_o_polymer // self.num_chain)
+        self.num_anion = len(self.anions_unwrap)
+        self.num_frames = self.run_unwrap.trajectory.n_frames
 
 
-    def times_range(self) -> np.ndarray:
-        n_frames = len(self.run_unwrap.trajectory[self.run_start:])
-        dt_frame = self.dt * self.dt_collection
+    def conductivity(self):
+        kbT = kb * self.temp
+        run_end = self.num_frames * self.dt_collection
+        times = np.arange(0, run_end* self.dt, self.dt * self.dt_collection, dtype=float)
 
-        return np.arange(
-            0.0,
-            n_frames * dt_frame,
-            dt_frame,
-            dtype=float,
-        )
+        print("Number of cations: ", self.num_cation)
+        print("Number of anions:  ", self.num_anion)
 
-    def get_cond_array(self):
+        cation_list = self.cations_unwrap.atoms.split("residue")
+        anions_list = self.anions_unwrap.atoms.split("residue")
 
-        return calc_cond_msd(
-            self.run_unwrap,
-            self.cations_unwrap,
-            self.anions_unwrap,
-            self.run_start,
-        )
-    
-    def get_slope_msd(self, msd_array, interval_time=10000, step_size=10):
+        cation_positions = np.zeros((self.num_frames, self.num_cation, 3), dtype=float)
+        anion_positions = np.zeros((self.num_frames, self.num_anion, 3), dtype=float)
 
-        slope, time_range = calc_slope_msd(
-            self.times,
-            msd_array,
-            self.dt_collection,
-            self.dt,
-            interval_time,
-            step_size
-        )
-        return slope, time_range
+        for iframe, ts in enumerate(self.run_unwrap.trajectory):
+            for i, cation in enumerate(cation_list):
+                cation_positions[iframe, i] = cation.center_of_mass()
 
-    def conductivity(self, save_csv=False, plot=False, ):
+            for i, anion in enumerate(anions_list):
+                anion_positions[iframe, i] = anion.center_of_mass()
 
-        msd_array = self.get_cond_array()
-        slope, time_ranges = self.get_slope_msd(msd_array)
-
-        if save_csv:
-            df = pd.DataFrame({
-                "time": self.times,
-                "msd": msd_array
-            })
-            df.to_csv('msd.csv', index=False)
-
-        if plot:
-            plot_msd(
-                msd_array,
-                self.times,
-                self.dt_collection,
-                self.dt,
-                time_ranges=time_ranges,
-            )
-
-        return calc_conductivity(
-            slope,
-            self.volume,
-            self.temp
-        )
-
-
-    def get_ions_positions_array(self, mols_unwrap=None):
-
-        mols_positions = create_position_arrays(
-            self.run_unwrap,
-            mols_unwrap,
-            self.times,
-            self.run_start,
-        )
-        return mols_positions
-
-
-    def get_Lii_self_array(self, atom_positions):
-
-        n_atoms = np.shape(atom_positions)[1]
-        return calc_Lii_self(atom_positions, self.times) / n_atoms
-
-
-    # calculate the self diffusion coefficient
-    def diffusion_coefficient(self, atoms, save_csv=False, plot=False, ):
-
-        atoms_unwrap = self.run_unwrap.select_atoms(atoms)
-        atoms_positions = self.get_ions_positions_array(atoms_unwrap)
-
-        msd_array = self.get_Lii_self_array(atoms_positions)
-        slope, time_ranges = self.get_slope_msd(msd_array)
-
-        if save_csv:
-            df = pd.DataFrame({
-                "time": self.times,
-                "msd": msd_array
-            })
-            df.to_csv('msd.csv', index=False)
-
-        if plot:
-            plot_msd(
-                msd_array,
-                self.times,
-                self.dt_collection,
-                self.dt,
-                time_ranges=time_ranges,
-            )
-
-        D = calc_self_diffusion_coeff(slope)
-
-        return D
+        msds_all = compute_all_Lij(cation_positions, anion_positions, times)
+        write_msds(self.num_cation, times, msds_all, self.workdir)

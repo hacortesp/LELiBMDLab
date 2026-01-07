@@ -70,7 +70,7 @@ class MDsim:
     # GROMACS orchestration
     # ========================================================
 
-    def _run_gromacs(self) -> None:
+    def _run_gromacs(self) -> None:        
         gmx = GROMACSrun(
             workdir=self.sim_dir,
             temperature=self.temp,
@@ -83,7 +83,7 @@ class MDsim:
         gmx.run()
 
         self.average_volume, self.volume_frame = gmx.analyze_npt_volume(
-            start=10,
+            start=2000,
             dt_collection=2,
         )
 

@@ -1,24 +1,5 @@
-===== Simulation cell =====
-30.0 [Å] x 30.0 [Å] x 30.0 [Å]
-V_cell [nm^3]: 27.000
+Number of cations:  39
+Number of anions:   39
+Conductivity: None
 
-
-
-===== Salt =====
-LiPF6: 16
-
-
-
-===== Solvents =====
-EC: 110 
-DMC: 86 
-
-
-
-===Creating simulation folders...===
-====Packmol input written to: /home/hacortes/Li-EMDLab/simulation_test/simulation_cell=====
-Running Packmol
-Packmol finished. conf.pdb and packmol.log generated.
-
-
-Time elapsed = 0.0051 minutes
+Time elapsed = 0.1212 minutes
