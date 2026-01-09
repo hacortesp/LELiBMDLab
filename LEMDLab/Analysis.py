@@ -6,12 +6,11 @@ import MDAnalysis as mda
 
 
 from LEMDLab.tools.msd import (
-    compute_all_Lij,
     calc_Ltot,
     calc_slope_msd,
-    write_msds,
-    slope_windows,
-    fit_data
+    write_msd_sigma,
+    preview_sigma,
+    compute_all_Lij,
 )
 
 """
@@ -65,7 +64,7 @@ class TrajAnalysis:
         self.temp = temperature
         self.cation_name = cation_name
         self.anion_name = anion_name
-        self.q_eff =  q_eff * q
+        self.q_eff =  q_eff
         self.kbT = kb * self.temp
         
         tpr_path = os.path.join(self.workdir, tpr_file)
@@ -84,32 +83,30 @@ class TrajAnalysis:
         self.num_frames = self.run_unwrap.trajectory.n_frames
         self.run_end = self.num_frames * self.dt_collection
 
-
     def conductivity(self): 
         self.times = np.arange(0, self.run_end* self.dt, self.dt * self.dt_collection, dtype=float)
-
+        print("===== Calculating conductivity =====")
         print("Number of cations: ", self.num_cation)
         print("Number of anions:  ", self.num_anion)
 
-        cation_positions, anion_positions = self.coord_arr()
+        msd_sigma = calc_Ltot(self.run_unwrap, self.cations_unwrap, self.anions_unwrap)
+        slope, time_ranges = calc_slope_msd(
+            self.times,
+            msd_sigma,
+            self.dt_collection,
+            self.dt,
+            interval_time=1200,
+            step_size=10,
+            )
+        sigma_val = self.calc_conductivity(slope, self.volume, self.temp, self.q_eff)
+        write_msd_sigma(self.times, msd_sigma, self.workdir)
+        preview_sigma(self.times, msd_sigma, time_ranges, self.workdir)
+        return sigma_val    
 
+    def difusivity(self):
+        cation_positions, anion_positions = self.coord_arr()
         msds_all = compute_all_Lij(cation_positions, anion_positions, self.times)
 
-        write_msds(self.num_cation, self.times, msds_all, self.workdir)
-        
-        windows = slope_windows(self.times, msds_all, self.num_cation, self.workdir)
-        i0, i1 = windows["total"][2], windows["total"][3]
-        print("Fitting Ltot in time range: ", self.times[i0], " to ", self.times[i1])
-        msd_total_norm = msds_all[5] / 6.0 / self.kbT / self.volume
-        l_total = fit_data(msd_total_norm, i0, i1, self.times)*(self.q_eff**2)*convertion_factor
-        
-        l_totPEMD = calc_Ltot(self.run_unwrap, self.cations_unwrap, self.anions_unwrap)
-        slope, time_ranges = self.get_slope_msd(l_totPEMD)
-        print("slope Ltot from calc_Ltot:", slope, "in time range:", time_ranges)
-        cond = self.calc_conductivity(slope * 0.85**2, self.volume, self.temp)
-        print(f"conductivity = {cond:.2f} mS/cm")
-
-        return l_total
 
     def coord_arr(self):
         cation_list = self.cations_unwrap.atoms.split("residue")
@@ -126,18 +123,8 @@ class TrajAnalysis:
 
         return cation_positions, anion_positions
     
-    def get_slope_msd(self, msd_array, interval_time=1200, step_size=10):
-        slope, time_range = calc_slope_msd(
-            self.times,
-            msd_array,
-            self.dt_collection,
-            self.dt,
-            interval_time,
-            step_size
-        )
-        return slope, time_range
-    
-    def calc_conductivity(self, slope, v, T):
+
+    def calc_conductivity(self, slope, v, T, q_eff):
         # Calculate conductivity from the slope
         A2cm = 1e-8  # Angstroms to cm
         ps2s = 1e-12  # picoseconds to seconds
@@ -145,6 +132,6 @@ class TrajAnalysis:
         kb = 1.38064852e-23  # Boltzmann Constant, J/K
         convert = e2c * e2c / ps2s / A2cm * 1000
 
-        cond = slope / 6 / kb / T / v * convert   # "mS/cm"
+        sigma = (q_eff**2 * slope) / 6 / kb / T / v * convert # "mS/cm"
 
-        return cond
+        return sigma

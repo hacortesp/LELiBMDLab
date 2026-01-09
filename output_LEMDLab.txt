@@ -1,9 +1,7 @@
+===== Calculating conductivity =====
 Number of cations:  39
 Number of anions:   39
-Fitting Ltot in time range:  120.0  to  1204.0
-slope Ltot from calc_Ltot: 2.1817107350745695 in time range: (1120.0, 2320.0)
-conductivity = 2.77 mS/cm
-Ionic conductivity   = 1.949366 mS/cm
+Ionic conductivity   = 2.769442 mS/cm
 
 
-Time elapsed = 0.3251 minutes
+Time elapsed = 0.1452 minutes
