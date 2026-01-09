@@ -7,10 +7,11 @@ import MDAnalysis as mda
 
 from LEMDLab.tools.msd import (
     calc_Ltot,
+    compute_all_Lij,
     calc_slope_msd,
     write_msd_sigma,
     preview_sigma,
-    compute_all_Lij,
+    positions_array
 )
 
 """
@@ -104,25 +105,23 @@ class TrajAnalysis:
         return sigma_val    
 
     def difusivity(self):
-        cation_positions, anion_positions = self.coord_arr()
+        cation_positions = self.coord_arr(self.run_unwrap, self.cations_unwrap)
+        anion_positions = positions_array(self.run_unwrap, self.anions_unwrap)
+        
+        print("SHAPES", cation_positions.shape, anion_positions.shape)
+
         msds_all = compute_all_Lij(cation_positions, anion_positions, self.times)
 
 
-    def coord_arr(self):
-        cation_list = self.cations_unwrap.atoms.split("residue")
-        anions_list = self.anions_unwrap.atoms.split("residue")
+    def coord_arr(self, run_unwrap, atoms_unwrap):
+        atoms_list = atoms_unwrap.atoms.split("residue")
+        atoms_positions = np.zeros((self.num_frames, self.num_cation, 3), dtype=float)
+        
+        for iframe, ts in enumerate(run_unwrap.trajectory):
+            for i, cation in enumerate(atoms_list):
+                atoms_positions[iframe, i] = cation.center_of_mass()
 
-        cation_positions = np.zeros((self.num_frames, self.num_cation, 3), dtype=float)
-        anion_positions = np.zeros((self.num_frames, self.num_anion, 3), dtype=float)
-
-        for iframe, ts in enumerate(self.run_unwrap.trajectory):
-            for i, cation in enumerate(cation_list):
-                cation_positions[iframe, i] = cation.center_of_mass()
-            for i, anion in enumerate(anions_list):
-                anion_positions[iframe, i] = anion.center_of_mass()
-
-        return cation_positions, anion_positions
-    
+        return atoms_positions 
 
     def calc_conductivity(self, slope, v, T, q_eff):
         # Calculate conductivity from the slope

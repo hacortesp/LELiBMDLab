@@ -212,3 +212,19 @@ def preview_sigma(times_ps, msd_sigma, time_ranges, output_dir):
         time_ranges=time_ranges,
     )
 
+
+# ========================= transformations =========================
+
+def positions_array(run, atoms, times, run_start):
+    time = 0
+    atoms_list = atoms.atoms.split("residue")
+    atoms_positions = np.zeros((len(times), len(atoms_list), 3))
+    
+    for ts in enumerate(tqdm(run.trajectory[int(run_start):])):
+        system_com = run.atoms.center_of_mass(wrap=True)
+        for index, ion in enumerate(atoms_list):
+            atoms_positions[time, index, :] = ion.center_of_mass() - system_com
+        
+        time += 1
+
+    return atoms_positions
