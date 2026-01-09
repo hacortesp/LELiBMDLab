@@ -4,16 +4,14 @@ import pandas as pd
 import numpy as np
 import MDAnalysis as mda
 
-from tqdm.auto import tqdm
-from cclib.io import ccopen
-from functools import partial
-from functools import lru_cache
-from multiprocessing import Pool
-from typing import Optional, Dict
 
 from LEMDLab.tools.msd import (
     compute_all_Lij,
-    write_msds
+    calc_Ltot,
+    calc_slope_msd,
+    write_msds,
+    slope_windows,
+    fit_data
 )
 
 """
@@ -41,9 +39,9 @@ from LEMDLab.tools.coordination import (
 )
 """
 
-kb, q = 1.38E-23, 1.60E-19
-
-
+kb = 1.38E-23
+q =  1.60E-19
+convertion_factor = 1e22
 
 class TrajAnalysis:
     def __init__(
@@ -67,9 +65,9 @@ class TrajAnalysis:
         self.temp = temperature
         self.cation_name = cation_name
         self.anion_name = anion_name
-        self.q_eff = q_eff
-
-
+        self.q_eff =  q_eff * q
+        self.kbT = kb * self.temp
+        
         tpr_path = os.path.join(self.workdir, tpr_file)
         wrap_xtc_path = os.path.join(self.workdir, xtc_wrap_file)
         unwrap_xtc_path = os.path.join(self.workdir, xtc_unwrap_file)
@@ -84,16 +82,36 @@ class TrajAnalysis:
         self.num_cation = len(self.cations_unwrap)
         self.num_anion = len(self.anions_unwrap)
         self.num_frames = self.run_unwrap.trajectory.n_frames
+        self.run_end = self.num_frames * self.dt_collection
 
 
-    def conductivity(self):
-        kbT = kb * self.temp
-        run_end = self.num_frames * self.dt_collection
-        times = np.arange(0, run_end* self.dt, self.dt * self.dt_collection, dtype=float)
+    def conductivity(self): 
+        self.times = np.arange(0, self.run_end* self.dt, self.dt * self.dt_collection, dtype=float)
 
         print("Number of cations: ", self.num_cation)
         print("Number of anions:  ", self.num_anion)
 
+        cation_positions, anion_positions = self.coord_arr()
+
+        msds_all = compute_all_Lij(cation_positions, anion_positions, self.times)
+
+        write_msds(self.num_cation, self.times, msds_all, self.workdir)
+        
+        windows = slope_windows(self.times, msds_all, self.num_cation, self.workdir)
+        i0, i1 = windows["total"][2], windows["total"][3]
+        print("Fitting Ltot in time range: ", self.times[i0], " to ", self.times[i1])
+        msd_total_norm = msds_all[5] / 6.0 / self.kbT / self.volume
+        l_total = fit_data(msd_total_norm, i0, i1, self.times)*(self.q_eff**2)*convertion_factor
+        
+        l_totPEMD = calc_Ltot(self.run_unwrap, self.cations_unwrap, self.anions_unwrap)
+        slope, time_ranges = self.get_slope_msd(l_totPEMD)
+        print("slope Ltot from calc_Ltot:", slope, "in time range:", time_ranges)
+        cond = self.calc_conductivity(slope * 0.85**2, self.volume, self.temp)
+        print(f"conductivity = {cond:.2f} mS/cm")
+
+        return l_total
+
+    def coord_arr(self):
         cation_list = self.cations_unwrap.atoms.split("residue")
         anions_list = self.anions_unwrap.atoms.split("residue")
 
@@ -103,9 +121,30 @@ class TrajAnalysis:
         for iframe, ts in enumerate(self.run_unwrap.trajectory):
             for i, cation in enumerate(cation_list):
                 cation_positions[iframe, i] = cation.center_of_mass()
-
             for i, anion in enumerate(anions_list):
                 anion_positions[iframe, i] = anion.center_of_mass()
 
-        msds_all = compute_all_Lij(cation_positions, anion_positions, times)
-        write_msds(self.num_cation, times, msds_all, self.workdir)
+        return cation_positions, anion_positions
+    
+    def get_slope_msd(self, msd_array, interval_time=1200, step_size=10):
+        slope, time_range = calc_slope_msd(
+            self.times,
+            msd_array,
+            self.dt_collection,
+            self.dt,
+            interval_time,
+            step_size
+        )
+        return slope, time_range
+    
+    def calc_conductivity(self, slope, v, T):
+        # Calculate conductivity from the slope
+        A2cm = 1e-8  # Angstroms to cm
+        ps2s = 1e-12  # picoseconds to seconds
+        e2c = 1.60217662e-19  # elementary charge to Coulomb
+        kb = 1.38064852e-23  # Boltzmann Constant, J/K
+        convert = e2c * e2c / ps2s / A2cm * 1000
+
+        cond = slope / 6 / kb / T / v * convert   # "mS/cm"
+
+        return cond

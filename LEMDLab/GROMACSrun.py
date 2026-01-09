@@ -65,7 +65,7 @@ class GROMACSrun:
             f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
             f"{self.gmx_exec} mdrun -deffnm nvt_prod_wrap",
 
-            f"echo 0 |{self.gmx_exec} trjconv -s nvt_prod_wrap.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc"
+            f"echo 0 |{self.gmx_exec} trjconv -s nvt_prod_wrap.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc -pbc nojump"
         ]
 
 
@@ -87,7 +87,7 @@ class GROMACSrun:
             f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm nvt_prod_wrap",
 
-            f"echo 0 |mpirun -np 1 {self.gmx_mpi_exec} trjconv -s nvt_prod_wrap.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc"
+            f"echo 0 |mpirun -np 1 {self.gmx_mpi_exec} trjconv -s nvt_prod_wrap.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc -pbc nojump"
         ]
 
 

@@ -148,7 +148,7 @@ analysis = TrajAnalysis(
 
 
 cond = analysis.conductivity()
-print("Conductivity:", cond)
+print(f"Ionic conductivity   = {cond*10:.6f} mS/cm\n")
 
 """
 Builder(
