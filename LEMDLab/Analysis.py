@@ -7,10 +7,12 @@ import MDAnalysis as mda
 
 from LEMDLab.tools.msd import (
     calc_Ltot,
-    compute_all_Lij,
+    calc_Lii_self,
     calc_slope_msd,
     write_msd_sigma,
-    preview_sigma,
+    write_msd_diff,
+    preview_msd_sigma,
+    preview_msd_diff,
     positions_array
 )
 
@@ -86,9 +88,6 @@ class TrajAnalysis:
 
     def conductivity(self): 
         self.times = np.arange(0, self.run_end* self.dt, self.dt * self.dt_collection, dtype=float)
-        print("===== Calculating conductivity =====")
-        print("Number of cations: ", self.num_cation)
-        print("Number of anions:  ", self.num_anion)
 
         msd_sigma = calc_Ltot(self.run_unwrap, self.cations_unwrap, self.anions_unwrap)
         slope, time_ranges = calc_slope_msd(
@@ -101,16 +100,67 @@ class TrajAnalysis:
             )
         sigma_val = self.calc_conductivity(slope, self.volume, self.temp, self.q_eff)
         write_msd_sigma(self.times, msd_sigma, self.workdir)
-        preview_sigma(self.times, msd_sigma, time_ranges, self.workdir)
+        preview_msd_sigma(self.times, msd_sigma, time_ranges, self.workdir)
         return sigma_val    
 
     def difusivity(self):
-        cation_positions = self.coord_arr(self.run_unwrap, self.cations_unwrap)
-        anion_positions = positions_array(self.run_unwrap, self.anions_unwrap)
-        
-        print("SHAPES", cation_positions.shape, anion_positions.shape)
+        species = {
+            "cation": {
+                "positions": positions_array(
+                    self.run_unwrap,
+                    self.cations_unwrap,
+                    self.num_frames
+                ),
+                "num": self.num_cation,
 
-        msds_all = compute_all_Lij(cation_positions, anion_positions, self.times)
+            },
+            "anion": {
+                "positions": positions_array(
+                    self.run_unwrap,
+                    self.anions_unwrap,
+                    self.num_frames
+                ),
+                "num": self.num_anion,
+            },
+        }
+
+        diffusivities = {}
+
+        for name, data in species.items():
+            msd = calc_Lii_self(data["positions"], self.times)
+
+            slope, time_ranges = calc_slope_msd(
+                self.times,
+                msd,
+                self.dt_collection,
+                self.dt,
+                interval_time=9600,
+                step_size=10,
+            )
+
+            # Diffusivity (inside the loop, as requested)
+            D = self.calc_self_diffusion(slope)
+
+            # Store result
+            diffusivities[name] = D
+
+            write_msd_diff(
+                self.times,
+                msd,
+                self.workdir,
+                data["num"],
+                species=name,
+            )
+
+            preview_msd_diff(
+                self.times,
+                msd,
+                time_ranges,
+                self.workdir,
+                name,   # "cation" or "anion"
+)
+
+        return diffusivities
 
 
     def coord_arr(self, run_unwrap, atoms_unwrap):
@@ -134,3 +184,14 @@ class TrajAnalysis:
         sigma = (q_eff**2 * slope) / 6 / kb / T / v * convert # "mS/cm"
 
         return sigma
+    
+    def calc_self_diffusion(self, slope):
+        # Constants for unit conversion from Angstroms squared to centimeters squared, and picoseconds to seconds
+        A2cm = 1e-8  # Angstroms to cm
+        ps2s = 1e-12  # picoseconds to seconds
+        convert = (A2cm ** 2) / ps2s   # conversion factor for cm^2/s
+
+        # Calculate the self-diffusion coefficient, D, using the slope of the MSD curve
+        D = slope * convert / 6  # factor of 6 for three-dimensional diffusion
+
+        return D

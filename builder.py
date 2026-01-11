@@ -148,7 +148,15 @@ analysis = TrajAnalysis(
 
 
 cond = analysis.conductivity()
+
+print("===== Calculating conductivity =====")
+diff = analysis.difusivity()
 print(f"Ionic conductivity   = {cond:.6f} mS/cm\n")
+
+print("\n===== Calculating Self-diffusion coefficients =====")
+for species, D in diff.items():
+    print(f"  {species.capitalize():6s}: {D:.3e} cm^2/s")
+
 
 """
 Builder(

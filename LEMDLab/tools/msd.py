@@ -153,8 +153,21 @@ def write_msd_sigma(times_ps, msd_sigma, output_dir):
         header="time(ps) msd_sigma(A²/ps)",
     )
 
+def write_msd_diff(times_ps, msd_diff, output_dir, num_atoms, species):
+    msd_dir = os.path.join(output_dir, "msd_diffusion_files")
+    os.makedirs(msd_dir, exist_ok=True)
+
+    path = os.path.join(msd_dir, f"msd_diff_{species}.csv")
+
+    np.savetxt(
+        path,
+        np.column_stack((times_ps, msd_diff / num_atoms)),
+        fmt="%.6f",
+        header="time(ps) msd_sigma(A^2)",
+    )
+
 # ========================= Fitting window selection (conductivity branch) =========================
-def preview_plot(
+def preview_plot_sigma(
     msd_data,
     times,
     fname,
@@ -199,28 +212,97 @@ def preview_plot(
     fig.savefig(fname, dpi=160)
     plt.close(fig)
 
+def preview_plot_diff(
+    msd_data,
+    times,
+    fname,
+    key,
+    time_ranges=None,
+):
+    rc("text", usetex=False)
+    rc("font", family="serif")
 
-def preview_sigma(times_ps, msd_sigma, time_ranges, output_dir):
+    font_list = {"title": 18, "label": 16, "ticket": 12}
+    color_list = ["#3C3846", "#DF543F", "#2286A9", "#FBBF7C"]
+
+    title = f"Diffusivity – {key.capitalize()}"
+
+    dt_collection = 2000
+    dt = 0.002
+    dt_ = dt_collection * dt
+
+    fig, ax = plt.subplots(figsize=(5.5, 4.0))
+
+    # Optional linear (diffusive) guide
+    if time_ranges is not None:
+        mid_time = 0.5 * (time_ranges[0] + time_ranges[1])
+        start = int(10 ** (np.log10(mid_time) - 0.15) / dt_)
+        end   = int(10 ** (np.log10(mid_time) + 0.15) / dt_)
+
+        scale = msd_data[int(mid_time / dt_)] / mid_time
+        x_log = times[start:end]
+        y_log = x_log * scale
+
+        ax.plot(x_log, y_log, "--", linewidth=2, color=color_list[2])
+
+    # MSD
+    ax.plot(times[1:], msd_data[1:], "-", linewidth=1.5, color=color_list[0])
+
+    ax.set_xlabel(r"$t$ (ps)", fontsize=font_list["label"])
+    ax.set_ylabel(r"MSD ($\mathrm{\AA}^2$)", fontsize=font_list["label"])
+    ax.set_title(title, fontsize=font_list["title"])
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(1e2,)
+    ax.grid(True, linestyle="--")
+
+    ax.tick_params(
+        axis="both",
+        which="both",
+        direction="in",
+        labelsize=font_list["ticket"],
+    )
+
+    plt.tight_layout()
+    fig.savefig(fname, dpi=160)
+    plt.close(fig)
+
+
+def preview_msd_sigma(times_ps, msd_sigma, time_ranges, output_dir):
     msd_dir = os.path.join(output_dir, "msd_sigma_file")
     os.makedirs(msd_dir, exist_ok=True)
     fname = os.path.join(msd_dir, "msd_sigma_preview.png")
 
-    preview_plot(
+    preview_plot_sigma(
         msd_sigma,
         times_ps,
         fname=fname,
+        time_ranges=time_ranges,    )
+
+
+def preview_msd_diff(times_ps, msd_self, time_ranges, output_dir, key):
+    msd_dir = os.path.join(output_dir, "msd_diffusion_files")
+    os.makedirs(msd_dir, exist_ok=True)
+
+    fname = os.path.join(msd_dir, f"msd_self_{key}.png")
+    preview_plot_diff(
+        msd_data=msd_self,
+        times=times_ps,
+        fname=fname,
+        key=key,
         time_ranges=time_ranges,
     )
 
-
 # ========================= transformations =========================
 
-def positions_array(run, atoms, times, run_start):
+def positions_array(run, atoms, times):
+    run_start = 0
     time = 0
     atoms_list = atoms.atoms.split("residue")
-    atoms_positions = np.zeros((len(times), len(atoms_list), 3))
+    atoms_positions = np.zeros((times, len(atoms_list), 3))
     
-    for ts in enumerate(tqdm(run.trajectory[int(run_start):])):
+    for ts in enumerate(tqdm(run.trajectory[int(run_start):], desc="Building ions COM position arrays")):
         system_com = run.atoms.center_of_mass(wrap=True)
         for index, ion in enumerate(atoms_list):
             atoms_positions[time, index, :] = ion.center_of_mass() - system_com
