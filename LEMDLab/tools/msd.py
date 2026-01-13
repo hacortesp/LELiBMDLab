@@ -161,79 +161,34 @@ def write_msd_diff(times_ps, msd_diff, output_dir, num_atoms, species):
 
     np.savetxt(
         path,
-        np.column_stack((times_ps, msd_diff / num_atoms)),
+        np.column_stack((times_ps, msd_diff)),
         fmt="%.6f",
         header="time(ps) msd_sigma(A^2)",
     )
 
 # ========================= Fitting window selection (conductivity branch) =========================
-def preview_plot_sigma(
+def preview_plot_msd(
     msd_data,
     times,
     fname,
+    title,
+    ylabel,
     time_ranges=None,
-):
-    rc("text", usetex=False)
-    rc("font", family="serif")
-    font_list = {"title": 20, "label": 16, "ticket": 12}
-    color_list = [ "#3C3846", "#DF543F", "#2286A9", "#FBBF7C"]
-    title = r"MSD $L^{tot} = L^{++}+L^{--}-2\times L^{+-}$"
-    dt_collection = 2000
-    dt = 0.002
-
-    dt_ = dt_collection * dt
-    fig, ax = plt.subplots(figsize=(8.0, 8.0))
-
-    # only compute and plot the power-law fit if time_ranges was passed
-    if time_ranges is not None:
-        mid_time = (time_ranges[1] + time_ranges[0]) / 2
-        start = int(10 ** (np.log10(mid_time) - 0.15) / dt_)
-        end   = int(10 ** (np.log10(mid_time) + 0.15) / dt_)
-        scale = (msd_data[int(mid_time / dt_)] + 40) / mid_time
-
-        x_log = times[start:end]
-        y_log = x_log * scale * 2
-
-        ax.plot(x_log, y_log, '--', linewidth=2, color=color_list[2])
-
-    # always plot the raw MSD
-    ax.plot(times[1:], msd_data[1:], '-', linewidth=1.5, color=color_list[0])
-
-    ax.set_xlabel(r'$t$ (ps)', fontsize=font_list["label"])
-    ax.set_ylabel(r'MSD ($\mathrm{\AA}^2$)', fontsize=font_list["label"])
-    ax.set_title(title)
-    ax.tick_params(axis='both', which='both', direction='in', labelsize=font_list["ticket"])
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_xlim(1e2,)
-    ax.grid(True, linestyle='--')
-    fig.set_size_inches(5.5, 4)
-    plt.tight_layout()
-    fig.savefig(fname, dpi=160)
-    plt.close(fig)
-
-def preview_plot_diff(
-    msd_data,
-    times,
-    fname,
-    key,
-    time_ranges=None,
+    guide_multiplier=1.0,
 ):
     rc("text", usetex=False)
     rc("font", family="serif")
 
-    font_list = {"title": 18, "label": 16, "ticket": 12}
-    color_list = ["#3C3846", "#DF543F", "#2286A9", "#FBBF7C"]
-
-    title = f"Diffusivity – {key.capitalize()}"
+    font = {"title": 18, "label": 16, "tick": 12}
+    colors = ["#3C3846", "#DF543F", "#2286A9", "#FBBF7C"]
 
     dt_collection = 2000
     dt = 0.002
     dt_ = dt_collection * dt
 
-    fig, ax = plt.subplots(figsize=(5.5, 4.0))
+    fig, ax = plt.subplots(figsize=(5.5, 4))
 
-    # Optional linear (diffusive) guide
+    # Optional diffusive guide
     if time_ranges is not None:
         mid_time = 0.5 * (time_ranges[0] + time_ranges[1])
         start = int(10 ** (np.log10(mid_time) - 0.15) / dt_)
@@ -241,28 +196,23 @@ def preview_plot_diff(
 
         scale = msd_data[int(mid_time / dt_)] / mid_time
         x_log = times[start:end]
-        y_log = x_log * scale
+        y_log = x_log * scale * guide_multiplier
 
-        ax.plot(x_log, y_log, "--", linewidth=2, color=color_list[2])
+        ax.plot(x_log, y_log, "--", linewidth=2, color=colors[2])
 
-    # MSD
-    ax.plot(times[1:], msd_data[1:], "-", linewidth=1.5, color=color_list[0])
+    # MSD curve
+    ax.plot(times[1:], msd_data[1:], "-", linewidth=1.5, color=colors[0])
 
-    ax.set_xlabel(r"$t$ (ps)", fontsize=font_list["label"])
-    ax.set_ylabel(r"MSD ($\mathrm{\AA}^2$)", fontsize=font_list["label"])
-    ax.set_title(title, fontsize=font_list["title"])
+    ax.set_xlabel(r"$t$ (ps)", fontsize=font["label"])
+    ax.set_ylabel(ylabel, fontsize=font["label"])
+    ax.set_title(title, fontsize=font["title"])
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlim(1e2,)
     ax.grid(True, linestyle="--")
 
-    ax.tick_params(
-        axis="both",
-        which="both",
-        direction="in",
-        labelsize=font_list["ticket"],
-    )
+    ax.tick_params(axis="both", which="both", direction="in", labelsize=font["tick"])
 
     plt.tight_layout()
     fig.savefig(fname, dpi=160)
@@ -272,26 +222,30 @@ def preview_plot_diff(
 def preview_msd_sigma(times_ps, msd_sigma, time_ranges, output_dir):
     msd_dir = os.path.join(output_dir, "msd_sigma_file")
     os.makedirs(msd_dir, exist_ok=True)
-    fname = os.path.join(msd_dir, "msd_sigma_preview.png")
 
-    preview_plot_sigma(
-        msd_sigma,
-        times_ps,
-        fname=fname,
-        time_ranges=time_ranges,    )
+    preview_plot_msd(
+        msd_data=msd_sigma,
+        times=times_ps,
+        fname=os.path.join(msd_dir, "msd_sigma_preview.png"),
+        title=r"MSD $L^{tot} = L^{++}+L^{--}-2\times L^{+-}$",
+        ylabel=r"MSD ($\mathrm{\AA}^2/ps$)",
+        time_ranges=time_ranges,
+        guide_multiplier=2.0,
+    )
 
 
 def preview_msd_diff(times_ps, msd_self, time_ranges, output_dir, key):
     msd_dir = os.path.join(output_dir, "msd_diffusion_files")
     os.makedirs(msd_dir, exist_ok=True)
 
-    fname = os.path.join(msd_dir, f"msd_self_{key}.png")
-    preview_plot_diff(
+    preview_plot_msd(
         msd_data=msd_self,
         times=times_ps,
-        fname=fname,
-        key=key,
+        fname=os.path.join(msd_dir, f"msd_self_{key}.png"),
+        title=f"MSD – {key.capitalize()}",
+        ylabel=r"MSD ($\mathrm{\AA}^2/ps$)",
         time_ranges=time_ranges,
+        guide_multiplier=2.0,
     )
 
 # ========================= transformations =========================

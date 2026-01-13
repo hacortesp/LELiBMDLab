@@ -157,6 +157,9 @@ print("\n===== Calculating Self-diffusion coefficients =====")
 for species, D in diff.items():
     print(f"  {species.capitalize():6s}: {D:.3e} cm^2/s")
 
+print("\n===== Calculating transfer number =====")
+t = analysis.transfer_number()
+print(f"t₊ = {t:.2f}")
 
 """
 Builder(

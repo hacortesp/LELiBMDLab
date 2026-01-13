@@ -8,6 +8,7 @@ import MDAnalysis as mda
 from LEMDLab.tools.msd import (
     calc_Ltot,
     calc_Lii_self,
+    calc_Lii,
     calc_slope_msd,
     write_msd_sigma,
     write_msd_diff,
@@ -158,20 +159,52 @@ class TrajAnalysis:
                 time_ranges,
                 self.workdir,
                 name,   # "cation" or "anion"
-)
+            )
 
         return diffusivities
+    
 
+    def transfer_number(self):
 
-    def coord_arr(self, run_unwrap, atoms_unwrap):
-        atoms_list = atoms_unwrap.atoms.split("residue")
-        atoms_positions = np.zeros((self.num_frames, self.num_cation, 3), dtype=float)
+        cations_positions = positions_array(
+            self.run_unwrap,
+            self.cations_unwrap,
+            self.num_frames
+            )
+    
+        anions_positions = positions_array(
+            self.run_unwrap,
+            self.anions_unwrap,
+            self.num_frames
+            )
+
+        slope_plusplus, time_range_plusplus = calc_slope_msd(
+            self.times,
+            calc_Lii(cations_positions),
+            self.dt_collection,
+            self.dt,
+            interval_time=1200,
+            step_size=10,
+            )
         
-        for iframe, ts in enumerate(run_unwrap.trajectory):
-            for i, cation in enumerate(atoms_list):
-                atoms_positions[iframe, i] = cation.center_of_mass()
+        slope_minusminus, time_range_minusminus = calc_slope_msd(
+            self.times,
+            calc_Lii(anions_positions),
+            self.dt_collection,
+            self.dt,
+            interval_time=1200,
+            step_size=10,
+            )
 
-        return atoms_positions 
+        return self.calc_transfer_number(
+            slope_plusplus,
+            slope_minusminus,
+            self.temp,
+            self.volume,
+            self.conductivity()
+        )
+
+    
 
     def calc_conductivity(self, slope, v, T, q_eff):
         # Calculate conductivity from the slope
@@ -195,3 +228,16 @@ class TrajAnalysis:
         D = slope * convert / 6  # factor of 6 for three-dimensional diffusion
 
         return D
+    
+    def calc_transfer_number(self, slope_plusplus, slope_minusminus, T, v, cond):
+        A2cm = 1e-8  # Angstroms to cm
+        ps2s = 1e-12  # picoseconds to seconds
+        e2c = 1.60217662e-19  # elementary charge to Coulomb
+        kb = 1.38064852e-23  # Boltzmann Constant, J/K
+        convert = e2c * e2c / ps2s / A2cm * 1000
+
+        slope_plusminus = (cond / convert * 6 * kb * T * v - slope_plusplus - slope_minusminus) / -2
+
+        t = (slope_plusplus - slope_plusminus) / (slope_plusplus + slope_minusminus - 2 * slope_plusminus)   # mS/cm
+
+        return t

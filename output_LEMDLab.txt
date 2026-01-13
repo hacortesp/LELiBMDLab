@@ -1,10 +1,12 @@
 ===== Calculating conductivity =====
-
-===== Calculating diffusivity =====
 Ionic conductivity   = 2.769442 mS/cm
 
-Self-diffusion coefficients:
+
+===== Calculating Self-diffusion coefficients =====
   Cation: 1.634e-05 cm^2/s
   Anion : 5.131e-05 cm^2/s
 
-Time elapsed = 0.3511 minutes
+===== Calculating transfer number =====
+t₊ = 0.47
+
+Time elapsed = 0.7209 minutes
