@@ -1,5 +1,7 @@
 
 ===== Calculating coordinationr =====
+values 2.625 0.0
+y_coor 0.0
 Li⁺–DMC coordination number: 0.00
 
-Time elapsed = 0.1609 minutes
+Time elapsed = 0.1011 minutes

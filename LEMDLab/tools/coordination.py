@@ -55,7 +55,7 @@ def obtain_rdf_coord(bins, rdf, coord_numbers):
 
     x_val = round(float(bins[first_min_index]), 3)
     y_coord = round(float(np.interp(x_val, bins, coord_numbers)), 3)
-
+    print("values", x_val, y_coord)
     return x_val, y_coord
 
 def load_md_trajectory(work_dir, tpr_filename='nvt_prod.tpr', xtc_filename='nvt_prod.xtc'):

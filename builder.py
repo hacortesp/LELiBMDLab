@@ -159,7 +159,7 @@ t = analysis.transfer_number()
 print(f"t₊ = {t:.2f}")
 """
 print("\n===== Calculating coordinationr =====")
-coord_Li = analysis.coordination_number("name LI", "name C2", save_csv=True, plot=True)
+coord_Li = analysis.coordination_number("resname LIP and name LI", "resname DMC and name C2", save_csv=True, plot=True)
 print(f"Li⁺–DMC coordination number: {float(coord_Li):.2f}")
 
 """

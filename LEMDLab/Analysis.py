@@ -275,7 +275,7 @@ class TrajAnalysis:
             )
 
         y_coord = obtain_rdf_coord(bins, rdf, coord_number)[1]
-
+        print("y_coor", y_coord)
         return y_coord
     
     def get_rdf_coordination_array(self, group1_name, group2_name):
