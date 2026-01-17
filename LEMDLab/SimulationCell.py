@@ -32,7 +32,7 @@ SOLVENT_PDB_MAP = {
 }
 
 SALT_DATA = {
-    "LiPF6": {
+    "PF6": {
         "Vmol": 168.162990597383,
         "cation_pdb": "Li.pdb",
         "anion_pdb": "PF6.pdb",

@@ -7,24 +7,8 @@ from matplotlib import rc
 import numpy as np
 from scipy import stats
 
-# Default fitting windows (fractions of len(times))
-CAT_START_F   = 0.01
-CAT_END_F     = 0.10
-AN_START_F    = 0.01
-AN_END_F      = 0.10
-CROSS_START_F = 0.01
-CROSS_END_F   = 0.10
-TOTAL_START_F = 0.01
-TOTAL_END_F   = 0.10
-
-# Updated windows for SELF terms (fractions)
-CAT_SELF_START_F = 0.10
-CAT_SELF_END_F   = 0.90
-AN_SELF_START_F  = 0.10
-AN_SELF_END_F    = 0.90
 
 
-# ========================= Common numeric kernels =========================
 def autocorrFFT(x):
     N = len(x)
     F = np.fft.fft(x, n=2*N)

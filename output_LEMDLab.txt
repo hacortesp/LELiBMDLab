@@ -1,12 +1,5 @@
-===== Calculating conductivity =====
-Ionic conductivity   = 2.769442 mS/cm
 
+===== Calculating coordinationr =====
+Li⁺–DMC coordination number: 0.00
 
-===== Calculating Self-diffusion coefficients =====
-  Cation: 1.634e-05 cm^2/s
-  Anion : 5.131e-05 cm^2/s
-
-===== Calculating transfer number =====
-t₊ = 0.47
-
-Time elapsed = 0.6583 minutes
+Time elapsed = 0.1609 minutes

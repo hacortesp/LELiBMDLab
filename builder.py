@@ -20,10 +20,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        "-salt",
+        "-anion_name",
         type=str,
-        default="LiPF6",
-        help="Salt name (default: LiPF6).",
+        default="PF6",
+        help="Anion name (default: PF6).",
     )
 
     parser.add_argument(
@@ -133,7 +133,6 @@ args = parse_args()
 
 start = timer()
 
-
 analysis = TrajAnalysis(
     workdir=args.workdir,
     tpr_file=args.tpr_file,
@@ -145,26 +144,28 @@ analysis = TrajAnalysis(
     cation_name="resname LIP and name LI",
     anion_name="resname _PF and name P1",  
 )
-
-
+"""
 cond = analysis.conductivity()
-
 print("===== Calculating conductivity =====")
-diff = analysis.difusivity()
 print(f"Ionic conductivity   = {cond:.6f} mS/cm\n")
 
 print("\n===== Calculating Self-diffusion coefficients =====")
+diff = analysis.difusivity()
 for species, D in diff.items():
     print(f"  {species.capitalize():6s}: {D:.3e} cm^2/s")
 
 print("\n===== Calculating transfer number =====")
 t = analysis.transfer_number()
 print(f"t₊ = {t:.2f}")
+"""
+print("\n===== Calculating coordinationr =====")
+coord_Li = analysis.coordination_number("name LI", "name C2", save_csv=True, plot=True)
+print(f"Li⁺–DMC coordination number: {float(coord_Li):.2f}")
 
 """
 Builder(
     box=args.box,
-    salt=args.salt,
+    salt=args.anion_name,
     salt_conc=args.salt_conc,
     solvents=args.solvents,
     solvent_fracs=args.solvent_fracs,
@@ -172,7 +173,7 @@ Builder(
 
 )
 
- 
+
 MDsim(
     charge_scale=args.charge_scale,
     workdir=args.workdir,

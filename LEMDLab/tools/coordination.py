@@ -16,10 +16,11 @@ from rdkit.Geometry import Point3D
 from MDAnalysis.analysis import rdf
 from matplotlib.colors import LogNorm
 from matplotlib.patches import Rectangle
-from PEMD.model import polymer, model_lib
+from matplotlib import rc
+#from PEMD.model import polymer, model_lib
+#from PEMD.analysis.utils import minimum_image_displacement
 from matplotlib.colors import LinearSegmentedColormap
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from PEMD.analysis.utils import minimum_image_displacement
 
 
 warnings.filterwarnings("ignore", category=UserWarning, module='MDAnalysis.coordinates.PDB')
@@ -88,57 +89,62 @@ def plot_rdf_coordination(
     bins,
     rdf,
     coord_numbers,
+    output_dir,
+    filename="rdf_coordination.png",
 ):
-    # Font sizes and color palette
-    font_list = {"label": 18, "ticket": 18, "legend": 16}
-    color_list = ["#DF543F", "#2286A9", "#FBBF7C", "#3C3846"]
+    rc("text", usetex=False)
+    rc("font", family="serif")
+    font_list = {"label": 16, "ticket": 12, "legend": 14}
+    color_list = ["#3C3846", "#DF543F", "#2286A9", "#FBBF7C"]
 
-    # Create the plotting canvas
+    coor_dir = os.path.join(output_dir, "coordination_files")
+    os.makedirs(coor_dir, exist_ok=True)  # ensure output exists
+
+    output_path = os.path.join(coor_dir, filename)
+
     fig, ax1 = plt.subplots()
     fig.set_size_inches(5.5, 4)
 
-    # Plot the RDF curve
     ax1.plot(
         bins,
         rdf,
-        '-',
+        "-",
         linewidth=1.5,
         color=color_list[0],
-        label='g(r)'
+        label=r"g(r)",
     )
-    ax1.set_xlabel('Distance (Å)', fontsize=font_list["label"])
-    ax1.set_ylabel('g(r)', fontsize=font_list["label"])
+    ax1.set_xlabel(r"Distance (Å)", fontsize=font_list["label"])
+    ax1.set_ylabel(r"g(r)", fontsize=font_list["label"])
     ax1.tick_params(
-        axis='both',
-        which='both',
-        direction='in',
-        labelsize=font_list["ticket"]
+        axis="both",
+        which="both",
+        direction="in",
+        labelsize=font_list["ticket"],
     )
 
-    # Add a second y-axis for the coordination number
     ax2 = ax1.twinx()
     ax2.plot(
         bins,
         coord_numbers,
-        '--',
+        "--",
         linewidth=2,
         color="grey",
-        label='Coord. Number'
+        label=r"Coord. Number",
     )
-    ax2.set_ylabel('Coordination Number', fontsize=font_list["label"])
+    ax2.set_ylabel(r"Coordination Number", fontsize=font_list["label"])
     ax2.tick_params(
-        axis='y',
-        which='both',
-        direction='in',
-        labelsize=font_list["ticket"]
+        axis="y",
+        which="both",
+        direction="in",
+        labelsize=font_list["ticket"],
     )
 
-    # Axis range and grid styling
     ax1.set_xlim(0, 10)
-    ax1.grid(True, linestyle='--')
+    ax1.grid(True, linestyle="--")
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)  # critical in batch runs
 
 
 def num_of_neighbor(

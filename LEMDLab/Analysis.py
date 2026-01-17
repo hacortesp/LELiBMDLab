@@ -17,16 +17,6 @@ from LEMDLab.tools.msd import (
     positions_array
 )
 
-"""
-from LEMDLab.tools.ion_dynamics import (
-    process_traj,
-    calc_tau3,
-    calc_delta_n_square,
-    calc_tau1,
-    ms_endtoend_distance,
-    fit_rouse_model,
-    calc_msd_M2
-)
 from LEMDLab.tools.coordination import (
     calc_rdf_coord,
     obtain_rdf_coord,
@@ -40,6 +30,18 @@ from LEMDLab.tools.coordination import (
     analyze_coordination_structure,
     calc_population_parallel
 )
+
+"""
+from LEMDLab.tools.ion_dynamics import (
+    process_traj,
+    calc_tau3,
+    calc_delta_n_square,
+    calc_tau1,
+    ms_endtoend_distance,
+    fit_rouse_model,
+    calc_msd_M2
+)
+
 """
 
 kb = 1.38E-23
@@ -87,6 +89,7 @@ class TrajAnalysis:
         self.num_frames = self.run_unwrap.trajectory.n_frames
         self.run_end = self.num_frames * self.dt_collection
 
+# ========================= conductivity =========================
     def conductivity(self): 
         self.times = np.arange(0, self.run_end* self.dt, self.dt * self.dt_collection, dtype=float)
 
@@ -201,10 +204,10 @@ class TrajAnalysis:
             slope_minusminus,
             self.temp,
             self.volume,
-            self.conductivity()
+            self.conductivity(),
+            self.q_eff
         )
 
-    
 
     def calc_conductivity(self, slope, v, T, q_eff):
         # Calculate conductivity from the slope
@@ -229,15 +232,58 @@ class TrajAnalysis:
 
         return D
     
-    def calc_transfer_number(self, slope_plusplus, slope_minusminus, T, v, cond):
+    def calc_transfer_number(self, slope_plusplus, slope_minusminus, T, v, sigma, q_eff):
         A2cm = 1e-8  # Angstroms to cm
         ps2s = 1e-12  # picoseconds to seconds
         e2c = 1.60217662e-19  # elementary charge to Coulomb
         kb = 1.38064852e-23  # Boltzmann Constant, J/K
         convert = e2c * e2c / ps2s / A2cm * 1000
 
-        slope_plusminus = (cond / convert * 6 * kb * T * v - slope_plusplus - slope_minusminus) / -2
+        slope_plusminus = (sigma / convert * 6 * kb * T * v / q_eff**2 - slope_plusplus - slope_minusminus) / -2
 
         t = (slope_plusplus - slope_plusminus) / (slope_plusplus + slope_minusminus - 2 * slope_plusminus)   # mS/cm
 
         return t
+    
+# ========================= Coordination ========================= 
+
+    def coordination_number(self, group1_name, group2_name, save_csv=False, plot=False):
+
+        bins, rdf, coord_number = self.get_rdf_coordination_array(group1_name, group2_name)
+
+        if save_csv:
+            coor_dir = os.path.join(self.workdir, "coordination_files")
+            os.makedirs(coor_dir, exist_ok=True)
+
+            csv_path = os.path.join(coor_dir, "coord.csv")
+
+            df = pd.DataFrame(
+                {
+                    "bins": bins,
+                    "rdf": rdf,
+                    "coordination_number": coord_number,
+                }
+            )
+            df.to_csv(csv_path, index=False)
+
+        if plot:
+            plot_rdf_coordination(
+                bins,
+                rdf,
+                coord_number,
+                self.workdir
+            )
+
+        y_coord = obtain_rdf_coord(bins, rdf, coord_number)[1]
+
+        return y_coord
+    
+    def get_rdf_coordination_array(self, group1_name, group2_name):
+        group1 = self.run_wrap.select_atoms(group1_name)
+        group2 = self.run_wrap.select_atoms(group2_name)
+        bins, rdf, coord_number = calc_rdf_coord(
+            group1,
+            group2,
+            self.volume
+        )
+        return bins, rdf, coord_number
