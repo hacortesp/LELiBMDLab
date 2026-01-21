@@ -22,7 +22,6 @@ from LEMDLab.tools.coordination import (
     obtain_rdf_coord,
     plot_rdf_coordination,
     num_of_neighbor,
-    pdb2mol,
     get_cluster_index,
     find_poly_match_subindex,
     get_cluster_withcap,
@@ -310,13 +309,18 @@ class TrajAnalysis:
         plot: bool = False,
     ):
        
+        solve_dir = os.path.join(self.workdir, "solvatation_structure")
+        os.makedirs(solve_dir, exist_ok=True)
+
+        png_path = os.path.join(solve_dir, "solvatation_structure.png")
+        csv_path = os.path.join(solve_dir, "solvatation.csv")
 
         select_dict = {
             "center": center_atom,
             "counter": counter_atom,
         }
 
-        return analyze_coordination_structure(
+        df = analyze_coordination_structure(
             run=self.run_wrap,
             run_start=run_start,
             run_end=run_end,
@@ -324,5 +328,24 @@ class TrajAnalysis:
             distance=distance,
             center_atom="center",
             counter_atom="counter",
-            plot=plot,
+            plot_path=png_path,
+        )
+
+        df.to_csv(csv_path, index=False, sep="\t")
+
+        return df
+    
+    def ion_cluster_population(self, run_start, run_end, center_atom = "cation", counter_atom = "anion", core = 4, plot = False):
+
+        select_cations = self.select_dict.get(center_atom)
+        select_anions = self.select_dict.get(counter_atom)
+
+        calc_population_parallel(
+            self.run_wrap,
+            run_start,
+            run_end,
+            select_cations,
+            select_anions,
+            core,
+            plot,
         )

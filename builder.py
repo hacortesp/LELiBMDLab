@@ -181,17 +181,29 @@ analysis = TrajAnalysis(
 )
 
 
-analysis.coordination_type(
-    run_start = 1000, 
-    run_end = 1100, 
-    distance = 4.0, 
+print("===== Calculating solvatation structure =====")
+
+df = analysis.coordination_type(
+    run_start = 1500, 
+    run_end = 3000, 
+    distance = 3.3, 
     center_atom = mol_dict["Li"], 
     counter_atom = mol_dict["PF6"],
     plot=True
 )
+print("*Solvent-separated ion pairs (SSIP)")
+print("*Contact ion pairs (CIP)")
+print("*Aggregate (AGG)")
+
+for _, row in df.iterrows():
+    print(f"{row['Solvation structure'].upper():>4s}  = {row['Percentage']}")
 
 
 """
+
+
+
+
 print("\n===== Calculating coordination =====")
 
 # 1) Cation–Anion

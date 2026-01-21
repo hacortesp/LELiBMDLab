@@ -69,32 +69,6 @@ def obtain_rdf_coord(bins, rdf, coord_numbers):
 
     return x_val, y_coord
 
-def load_md_trajectory(work_dir, tpr_filename='nvt_prod.tpr', xtc_filename='nvt_prod.xtc'):
-    data_tpr_file = os.path.join(work_dir, tpr_filename)
-    data_xtc_file = os.path.join(work_dir, xtc_filename)
-    u = mda.Universe(data_tpr_file, data_xtc_file)
-    return u
-
-def analyze_coordination(universe, li_atoms, molecule_groups, cutoff_radii, run_start, run_end):
-    num_timesteps = run_end - run_start
-    num_li_atoms = len(li_atoms)
-    coordination = np.zeros((num_timesteps, num_li_atoms), dtype=int)
-
-    for ts_index, ts in enumerate(tqdm(universe.trajectory[run_start:run_end], desc='Processing')):
-        box_size = ts.dimensions[0:3]
-        for li_index, li in enumerate(li_atoms):
-            encoded_coordination = 0
-            factor = 10**(len(molecule_groups) - 1)  # Factor for encoding counts at different decimal places
-            for group_name, group_atoms in molecule_groups.items():
-                d_vec = minimum_image_displacement(group_atoms.positions, li.position, box_size)
-                d = np.linalg.norm(d_vec, axis=1)
-                close_atoms_index = np.where(d < cutoff_radii[group_name])[0]
-                unique_resids = len(np.unique(group_atoms[close_atoms_index].resids))
-                encoded_coordination += unique_resids * factor
-                factor //= 10  # Increment factor for the next group encoding
-            coordination[ts_index, li_index] = encoded_coordination
-
-    return coordination
 
 def plot_rdf_coordination(
     bins,
@@ -267,118 +241,6 @@ def select_shell(
         distance_str = distance
     return "(" + species_selection + ") and (around " + distance_str + " index " + str(center_atom.index) + ")"
 
-def pdb2mol(work_dir, pdb_filename):
-    label_to_element = {
-        'N': 'N',
-        'S': 'S',
-        'O': 'O',
-        'C': 'C',
-        'F': 'F',
-        'CL': 'Cl',
-        'BR': 'Br',
-        'LI': 'Li',
-        'SI':'Si'
-    }
-
-    pdb_filepath = os.path.join(work_dir, pdb_filename)
-
-    # Collect atom labels, coordinates, and residue names
-    atoms_data = []
-
-    # Read the PDB file
-    with open(pdb_filepath, 'r') as f:
-        for line in f:
-            if line.startswith(('ATOM', 'HETATM')):
-                # Relevant PDB columns:
-                #   columns 13-16: atom name
-                #   column 17: alternate location indicator
-                #   columns 18-20: residue name
-                #   column 22: chain identifier
-                #   columns 23-26: residue sequence number
-                #   columns 31-38: X coordinate
-                #   columns 39-46: Y coordinate
-                #   columns 47-54: Z coordinate
-                atom_name = line[12:17].strip()
-                res_name = line[17:20].strip()
-                x = float(line[30:38].strip())
-                y = float(line[38:46].strip())
-                z = float(line[46:54].strip())
-
-                # Infer the element symbol from the atom name if the element field is blank
-                element = line[76:78].strip()
-                if not element:
-                    # Use the first alphabetical character(s) of the atom name as the element symbol
-                    element = ''.join([char for char in atom_name if char.isalpha()])[0]
-
-                element = label_to_element.get(element, element)
-
-                atoms_data.append((element, res_name, atom_name, (x, y, z)))
-
-    num_atoms = len(atoms_data)
-    if num_atoms == 0:
-        print("No atom information found in the PDB file.")
-        return None
-
-    # Create a new RDKit molecule
-    mol = Chem.RWMol()
-
-    # Add atoms to the molecule and store residue names as atom properties
-    for atom_info in atoms_data:
-        label, res_name, atom_name, coords = atom_info
-        atomic_num = Chem.GetPeriodicTable().GetAtomicNumber(label)
-        if atomic_num == 0:
-            print(f"Unrecognized element symbol '{label}', skipping this atom.")
-            continue
-        atom = Chem.Atom(atomic_num)
-        # Set the 'resname' atom property
-        atom.SetProp("resname", res_name)
-        atom.SetProp("name", atom_name)
-        mol.AddAtom(atom)
-
-    # Generate a 3D conformer
-    conf = Chem.Conformer(num_atoms)
-    for i, atom_info in enumerate(atoms_data):
-        _, _, _, (x, y, z) = atom_info
-        conf.SetAtomPosition(i, Chem.rdGeometry.Point3D(x, y, z))
-    mol.AddConformer(conf)
-
-    # Add bonds based on interatomic distances and covalent radii
-    tolerance = 0.4  # Å
-    pt = Chem.GetPeriodicTable()
-    for i in range(num_atoms):
-        atom_i = mol.GetAtomWithIdx(i)
-        for j in range(i + 1, num_atoms):
-            atom_j = mol.GetAtomWithIdx(j)
-            # Calculate the distance between atoms
-            pos_i = np.array([conf.GetAtomPosition(i).x,
-                              conf.GetAtomPosition(i).y,
-                              conf.GetAtomPosition(i).z])
-            pos_j = np.array([conf.GetAtomPosition(j).x,
-                              conf.GetAtomPosition(j).y,
-                              conf.GetAtomPosition(j).z])
-            distance = np.linalg.norm(pos_i - pos_j)
-            # Retrieve the covalent radii
-            radius_i = pt.GetRcovalent(atom_i.GetSymbol())
-            radius_j = pt.GetRcovalent(atom_j.GetSymbol())
-            if radius_i == 0 or radius_j == 0:
-                continue  # Skip if a radius is unavailable
-            # Check whether the distance falls within the sum of radii plus tolerance
-            if distance <= (radius_i + radius_j + tolerance):
-                try:
-                    mol.AddBond(i, j, order=Chem.rdchem.BondType.SINGLE)
-                except Exception as e:
-                    print(f"Failed to add bond: {e}")
-
-    # Convert to an RDKit ``Mol`` and sanitize the result
-    mol = mol.GetMol()
-    try:
-        Chem.SanitizeMol(mol)
-    except Chem.rdchem.KekulizeException as e:
-        print(f"Molecule sanitization failed: {e}")
-        return None
-
-    return mol
-
 
 def parse_selection_string(selection_str):
 
@@ -518,62 +380,6 @@ def get_cluster_index(
 
     return sorted(c_idx_list), sorted(center_atom_indices), sorted(selected_atom_indices), sorted(other_atom_indices)
 
-
-# def find_poly_match_subindex(poly_name, repeating_unit, length, mol, selected_atom_idxs, c_idx_list, ):
-#
-#     (
-#         dum1,
-#         dum2,
-#         atom1,
-#         atom2,
-#     ) = polymer.Init_info(
-#         poly_name,
-#         repeating_unit,
-#     )
-#
-#     (
-#         inti_mol3,
-#         monomer_mol,
-#         start_atom,
-#         end_atom,
-#     ) = model_lib.gen_smiles_nocap(
-#         dum1,
-#         dum2,
-#         atom1,
-#         atom2,
-#         repeating_unit,
-#         length,
-#     )
-#     main_smi = Chem.MolToSmiles(inti_mol3, canonical=False)
-#     mol_test = Chem.MolFromSmiles(main_smi)
-#
-#     # Collect the indices of all neighbors of ``*`` atoms in a single comprehension
-#     connected_idxs = [
-#         nbr.GetIdx()
-#         for atom in mol_test.GetAtoms() if atom.GetSymbol() == '*'
-#         for nbr in atom.GetNeighbors()
-#     ]
-#     main_smi_with_h1 = main_smi.replace('*', '[H]')
-#     main_mol_with_h1 = Chem.MolFromSmiles(main_smi_with_h1)
-#
-#     main_mol = Chem.RemoveHs(main_mol_with_h1)
-#     main_smi = Chem.MolToSmiles(main_mol, canonical=False)
-#
-#     mol1 = Chem.MolFromSmiles(main_smi)
-#     rw_mol = Chem.RWMol(mol1)
-#     for bond in rw_mol.GetBonds():
-#         bond.SetBondType(Chem.BondType.SINGLE)
-#
-#     mol2 = rw_mol.GetMol()
-#     smi2 = Chem.MolToSmiles(mol2, canonical=False)
-#     pattern = Chem.MolFromSmiles(smi2)
-#     matches = _plainize_mol(mol).GetSubstructMatches(_plainize_mol(pattern), useChirality=False)
-#     print(pattern)
-#
-#     best = pick_most_central_match(matches, c_idx_list, selected_atom_idxs)
-#     if best is not None:
-#         # return list(best), connected_idxs[0], connected_idxs[1]-1
-#         return list(best), start_atom, connected_idxs[1]-1
 
 def _plainize_mol(m: Chem.Mol) -> Chem.Mol:
     m2 = Chem.Mol(m)
@@ -1093,7 +899,7 @@ def analyze_coordination_structure(
     distance: float,
     center_atom: str = "cation",
     counter_atom: str = "anion",
-    plot: bool = False,
+    plot_path: str = None,
 ) -> pd.DataFrame:
 
     def select_shell(select, distance, center_atom, kw):
@@ -1171,30 +977,30 @@ def analyze_coordination_structure(
         percent_list.append(f"{(combined[i, 1] / combined[:, 1].sum() * 100):.4f}%")
     df_dict = {"Solvation structure": item_list, "Percentage": percent_list}
 
-    if plot:
-        order = ["ssip", "cip", "agg"]
-        perc_map = {k: float(v.strip("%")) for k, v in zip(item_list, percent_list)}
-        plot_vals = [perc_map.get(k, 0.0) for k in order]
+    
+    order = ["ssip", "cip", "agg"]
+    perc_map = {k: float(v.strip("%")) for k, v in zip(item_list, percent_list)}
+    plot_vals = [perc_map.get(k, 0.0) for k in order]
 
-        fig, ax = plt.subplots(figsize=(4.2, 3.2))
-        bars = ax.bar(order, plot_vals,  width=0.35, edgecolor="black", linewidth=0.50)
-        ax.set_ylim(0, 100)
-        ax.set_ylabel("Percentage (%)")
-        ax.grid(axis="y", linestyle=":", alpha=0.35)
+    fig, ax = plt.subplots(figsize=(4.2, 3.2))
+    bars = ax.bar(order, plot_vals,  width=0.35, edgecolor="black", linewidth=0.50)
+    ax.set_ylim(0, 100)
+    ax.set_ylabel("Percentage (%)")
+    ax.grid(axis="y", linestyle=":", alpha=0.35)
 
-        # Annotate the top of each bar
-        for rect, v in zip(bars, plot_vals):
-            ax.text(
-                rect.get_x() + rect.get_width() / 2.0,
-                rect.get_height() + 0.6,
-                f"{v:.1f}%",
-                ha="center",
-                va="bottom",
-                fontsize=9,
-            )
-        plt.tight_layout()
-        fig.savefig("coordination_structure.png", dpi=300, bbox_inches="tight")
-        plt.close(fig)
+    # Annotate the top of each bar
+    for rect, v in zip(bars, plot_vals):
+        ax.text(
+            rect.get_x() + rect.get_width() / 2.0,
+            rect.get_height() + 0.6,
+            f"{v:.1f}%",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+    plt.tight_layout()
+    fig.savefig(plot_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
     return pd.DataFrame(df_dict)
 

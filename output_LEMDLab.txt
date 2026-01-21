@@ -1,2 +1,9 @@
+===== Calculating solvatation structure =====
+*Solvent-separated ion pairs (SSIP)
+*Contact ion pairs (CIP)
+*Aggregate (AGG)
+SSIP  = 98.7248%
+ CIP  = 1.2410%
+ AGG  = 0.0342%
 
-Time elapsed = 0.1151 minutes
+Time elapsed = 1.2144 minutes
