@@ -247,37 +247,41 @@ class TrajAnalysis:
     
 # ========================= Coordination ========================= 
 
-    def coordination_number(self, group1_name, group2_name, save_csv=False, plot=False):
-
+    def coordination_number(self, group1_name, group2_name):
         bins, rdf, coord_number = self.get_rdf_coordination_array(group1_name, group2_name)
 
-        if save_csv:
-            coor_dir = os.path.join(self.workdir, "coordination_files")
-            os.makedirs(coor_dir, exist_ok=True)
+        res1 = self.extract_resname(group1_name)
+        res2 = self.extract_resname(group2_name)
+        tag = f"{res1}__{res2}" 
 
-            csv_path = os.path.join(coor_dir, "coord.csv")
+        coor_dir = os.path.join(self.workdir, "coordination_files")
+        os.makedirs(coor_dir, exist_ok=True)
+            
+        
+        csv_path = os.path.join(coor_dir,  f"coord_{tag}.csv")
 
-            df = pd.DataFrame(
-                {
-                    "bins": bins,
-                    "rdf": rdf,
-                    "coordination_number": coord_number,
-                }
-            )
-            df.to_csv(csv_path, index=False)
+        df = pd.DataFrame(
+            {
+                "bins": bins,
+                "rdf": rdf,
+                "coordination_number": coord_number,
+            }
+        )
+        df.to_csv(csv_path, index=False)
 
-        if plot:
-            plot_rdf_coordination(
-                bins,
-                rdf,
-                coord_number,
-                self.workdir
-            )
 
-        y_coord = obtain_rdf_coord(bins, rdf, coord_number)[1]
-        print("y_coor", y_coord)
-        return y_coord
-    
+        plot_rdf_coordination(
+            bins,
+            rdf,
+            coord_number,
+            self.workdir,
+            filename=f"rdf_coordination_{tag}.png"
+        )
+
+        x_val, y_coord = obtain_rdf_coord(bins, rdf, coord_number)
+
+        return x_val, y_coord
+
     def get_rdf_coordination_array(self, group1_name, group2_name):
         group1 = self.run_wrap.select_atoms(group1_name)
         group2 = self.run_wrap.select_atoms(group2_name)
@@ -287,3 +291,38 @@ class TrajAnalysis:
             self.volume
         )
         return bins, rdf, coord_number
+
+    def extract_resname(self, selection: str) -> str:
+        for token in selection.split():
+            if token.lower() != "resname":
+                continue
+            idx = selection.split().index(token)
+            return selection.split()[idx + 1]
+        raise ValueError(f"Cannot extract resname from '{selection}'")
+    
+    def coordination_type(
+        self,
+        run_start: int,
+        run_end: int,
+        distance: float,
+        center_atom: str,
+        counter_atom: str,
+        plot: bool = False,
+    ):
+       
+
+        select_dict = {
+            "center": center_atom,
+            "counter": counter_atom,
+        }
+
+        return analyze_coordination_structure(
+            run=self.run_wrap,
+            run_start=run_start,
+            run_end=run_end,
+            select_dict=select_dict,
+            distance=distance,
+            center_atom="center",
+            counter_atom="counter",
+            plot=plot,
+        )

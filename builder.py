@@ -20,6 +20,13 @@ def parse_args():
     )
 
     parser.add_argument(
+        "-cation_name",
+        type=str,
+        default="Li",
+        help="Cation name key in mol_dict (default: Li).",
+    )
+
+    parser.add_argument(
         "-anion_name",
         type=str,
         default="PF6",
@@ -124,14 +131,42 @@ def parse_args():
         default=2000,
         help="Data collection interval (default: 2000).",
     )
-
-
     return parser.parse_args()
-
 
 args = parse_args()
 
 start = timer()
+
+
+mol_dict = {
+    "EC": "resname _EC and name C2",
+    "DMC": "resname DMC and name C2",
+    "EMC": "resname EMC and name C2",
+    "PC": "resname _PC and name C2",
+    "DEC": "resname DEC and name C2",
+    "DME": "resname DME and name C3",
+    "PF6": "resname _PF and name P1",
+    "Li": "resname LIP and name LI", 
+}
+
+try:
+    cation_sel = mol_dict[args.cation_name]
+except KeyError:
+    raise KeyError(f"Unknown cation_name '{args.cation_name}'. Available: {list(mol_dict)}")
+
+try:
+    anion_sel = mol_dict[args.anion_name]
+except KeyError:
+    raise KeyError(f"Unknown anion_name '{args.anion_name}'. Available: {list(mol_dict)}")
+
+
+
+select_dict = {
+    "cation": "resname LIP and name LI",
+    "anion": "resname _PF and name P1",
+    "organic": "resname MOL and name O",
+}
+
 
 analysis = TrajAnalysis(
     workdir=args.workdir,
@@ -141,10 +176,51 @@ analysis = TrajAnalysis(
     dt=args.dt,
     dt_collection=args.dt_collection,
     temperature=args.temperature,
-    cation_name="resname LIP and name LI",
-    anion_name="resname _PF and name P1",  
+    cation_name=cation_sel,
+    anion_name=anion_sel,
 )
+
+
+analysis.coordination_type(
+    run_start = 1000, 
+    run_end = 1100, 
+    distance = 4.0, 
+    center_atom = mol_dict["Li"], 
+    counter_atom = mol_dict["PF6"],
+    plot=True
+)
+
+
 """
+print("\n===== Calculating coordination =====")
+
+# 1) Cation–Anion
+distance, coord = analysis.coordination_number(cation_sel, anion_sel)
+print(
+    f"{args.cation_name}–{args.anion_name}, "
+    f"coordination number: {float(coord):.2f}, "
+    f"distance: {float(distance):.2f} Å"
+)
+
+# 2) Cation–Solvents
+for solvent in args.solvents:
+    if solvent not in mol_dict:
+        raise KeyError(
+            f"Unknown solvent '{solvent}'. Available: {list(mol_dict)}"
+        )
+
+    solvent_sel = mol_dict[solvent]
+
+    distance, coord = analysis.coordination_number(cation_sel, solvent_sel)
+
+    print(
+        f"{args.cation_name}–{solvent}, "
+        f"coordination number: {float(coord):.2f}, "
+        f"distance: {float(distance):.2f} Å"
+    )
+
+
+
 cond = analysis.conductivity()
 print("===== Calculating conductivity =====")
 print(f"Ionic conductivity   = {cond:.6f} mS/cm\n")
@@ -157,10 +233,10 @@ for species, D in diff.items():
 print("\n===== Calculating transfer number =====")
 t = analysis.transfer_number()
 print(f"t₊ = {t:.2f}")
+
+
 """
-print("\n===== Calculating coordinationr =====")
-coord_Li = analysis.coordination_number("resname LIP and name LI", "resname DMC and name C2", save_csv=True, plot=True)
-print(f"Li⁺–DMC coordination number: {float(coord_Li):.2f}")
+
 
 """
 Builder(

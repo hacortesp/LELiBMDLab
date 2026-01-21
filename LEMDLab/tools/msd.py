@@ -240,11 +240,11 @@ def positions_array(run, atoms, times):
     atoms_list = atoms.atoms.split("residue")
     atoms_positions = np.zeros((times, len(atoms_list), 3))
     
-    for ts in enumerate(tqdm(run.trajectory[int(run_start):], desc="Building ions COM position arrays")):
+    for ts in enumerate(run.trajectory[int(run_start):]):
         system_com = run.atoms.center_of_mass(wrap=True)
         for index, ion in enumerate(atoms_list):
             atoms_positions[time, index, :] = ion.center_of_mass() - system_com
         
         time += 1
 
-    return atoms_positions
+    return atoms_positions  

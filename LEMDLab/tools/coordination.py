@@ -41,21 +41,32 @@ def calc_rdf_coord(group1, group2, v, nbins=200, range_rdf=(0.0, 10.0)):
     return bins, rdf_values, coord_numbers
 
 def obtain_rdf_coord(bins, rdf, coord_numbers):
-
     deriv_sign_changes = np.diff(np.sign(np.diff(rdf)))
     peak_index = np.where(deriv_sign_changes < 0)[0] + 1
+
     if len(peak_index) == 0:
         raise ValueError("No peak found in RDF data.")
-    first_peak_index = peak_index[0]
+
+    # Reject noise peaks by RDF height
+    peak_ptr = 0
+    while peak_ptr < len(peak_index) and rdf[peak_index[peak_ptr]] < 0.1:
+        peak_ptr += 1
+
+    if peak_ptr >= len(peak_index):
+        raise ValueError("No physical RDF peak found (all peaks below threshold).")
+
+    first_peak_index = peak_index[peak_ptr]
 
     min_after_peak_index = np.where(deriv_sign_changes[first_peak_index:] > 0)[0] + first_peak_index + 1
+
     if len(min_after_peak_index) == 0:
         raise ValueError("No minimum found after the first peak in RDF data.")
+
     first_min_index = min_after_peak_index[0]
 
     x_val = round(float(bins[first_min_index]), 3)
     y_coord = round(float(np.interp(x_val, bins, coord_numbers)), 3)
-    print("values", x_val, y_coord)
+
     return x_val, y_coord
 
 def load_md_trajectory(work_dir, tpr_filename='nvt_prod.tpr', xtc_filename='nvt_prod.xtc'):
@@ -90,7 +101,7 @@ def plot_rdf_coordination(
     rdf,
     coord_numbers,
     output_dir,
-    filename="rdf_coordination.png",
+    filename,
 ):
     rc("text", usetex=False)
     rc("font", family="serif")
@@ -1181,9 +1192,9 @@ def analyze_coordination_structure(
                 va="bottom",
                 fontsize=9,
             )
-
         plt.tight_layout()
-        plt.show()
+        fig.savefig("coordination_structure.png", dpi=300, bbox_inches="tight")
+        plt.close(fig)
 
     return pd.DataFrame(df_dict)
 
