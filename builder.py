@@ -180,6 +180,18 @@ analysis = TrajAnalysis(
     anion_name=anion_sel,
 )
 
+analysis.ion_cluster_population(
+    run_start = 1000, 
+    run_end = 1100, 
+    center_atom = mol_dict["Li"], 
+    counter_atom = mol_dict["PF6"],
+    core = 2, 
+    plot = True
+)
+
+
+
+"""
 
 print("===== Calculating solvatation structure =====")
 
@@ -197,11 +209,6 @@ print("*Aggregate (AGG)")
 
 for _, row in df.iterrows():
     print(f"{row['Solvation structure'].upper():>4s}  = {row['Percentage']}")
-
-
-"""
-
-
 
 
 print("\n===== Calculating coordination =====")

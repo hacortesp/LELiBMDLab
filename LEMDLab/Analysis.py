@@ -20,12 +20,7 @@ from LEMDLab.tools.msd import (
 from LEMDLab.tools.coordination import (
     calc_rdf_coord,
     obtain_rdf_coord,
-    plot_rdf_coordination,
-    num_of_neighbor,
-    get_cluster_index,
-    find_poly_match_subindex,
-    get_cluster_withcap,
-    merge_xyz_files,
+    plot_rdf_coordination,  
     analyze_coordination_structure,
     calc_population_parallel
 )
@@ -335,10 +330,10 @@ class TrajAnalysis:
 
         return df
     
-    def ion_cluster_population(self, run_start, run_end, center_atom = "cation", counter_atom = "anion", core = 4, plot = False):
+    def ion_cluster_population(self, run_start, run_end, center_atom, counter_atom, core = 2, plot = False):
 
-        select_cations = self.select_dict.get(center_atom)
-        select_anions = self.select_dict.get(counter_atom)
+        select_cations = center_atom
+        select_anions = counter_atom
 
         calc_population_parallel(
             self.run_wrap,
