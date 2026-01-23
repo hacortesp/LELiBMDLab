@@ -180,59 +180,34 @@ analysis = TrajAnalysis(
     anion_name=anion_sel,
 )
 
-print("\n===== Calculating coordination =====")
-
-# 1) Cation–Anion
-distance, coord = analysis.coordination_number(cation_sel, anion_sel)
-print(
-    f"{args.cation_name}–{args.anion_name}, "
-    f"coordination number: {float(coord):.2f}, "
-    f"distance: {float(distance):.2f} Å"
-)
-
-# 2) Cation–Solvents
-for solvent in args.solvents:
-    if solvent not in mol_dict:
-        raise KeyError(
-            f"Unknown solvent '{solvent}'. Available: {list(mol_dict)}"
-        )
-
-    solvent_sel = mol_dict[solvent]
-
-    distance, coord = analysis.coordination_number(cation_sel, solvent_sel)
-
-    print(
-        f"{args.cation_name}–{solvent}, "
-        f"coordination number: {float(coord):.2f}, "
-        f"distance: {float(distance):.2f} Å"
-    )
 
 
 print("\n===== Calculating ion association =====")
 
 analysis.ion_cluster_population(
-    run_start = 2990, 
+    run_start = 1500, 
     run_end = 3000, 
     center_atom = mol_dict["Li"], 
     counter_atom = mol_dict["PF6"],
-    r_cut=3.2,
+    distance=3.3,
     core = 2,
 )
-
+print("Writing files in ion_association folder")
 
 
 """
 
-print("===== Calculating solvatation structure =====")
+print("\n===== Calculating solvatation structure =====")
 
 df = analysis.coordination_type(
     run_start = 1500, 
     run_end = 3000, 
     distance = 3.3, 
     center_atom = mol_dict["Li"], 
-    counter_atom = mol_dict["PF6"],
-    plot=True
+    counter_atom = mol_dict["PF6"]
 )
+print("Writing files in solvatation_structure folder")
+print("Consider:")
 print("*Solvent-separated ion pairs (SSIP)")
 print("*Contact ion pairs (CIP)")
 print("*Aggregate (AGG)")
@@ -241,8 +216,8 @@ for _, row in df.iterrows():
     print(f"{row['Solvation structure'].upper():>4s}  = {row['Percentage']}")
 
 
-print("\n===== Calculating coordination =====")
 
+print("\n===== Calculating coordination =====")
 # 1) Cation–Anion
 distance, coord = analysis.coordination_number(cation_sel, anion_sel)
 print(
@@ -267,11 +242,11 @@ for solvent in args.solvents:
         f"coordination number: {float(coord):.2f}, "
         f"distance: {float(distance):.2f} Å"
     )
+print("Writing files in coordination_files folder")
 
 
-
-cond = analysis.conductivity()
 print("===== Calculating conductivity =====")
+cond = analysis.conductivity()
 print(f"Ionic conductivity   = {cond:.6f} mS/cm\n")
 
 print("\n===== Calculating Self-diffusion coefficients =====")

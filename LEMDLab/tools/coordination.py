@@ -9,8 +9,6 @@ import MDAnalysis as mda
 import matplotlib.pyplot as plt
 
 from tqdm.auto import tqdm
-from collections import deque
-from rdkit.Geometry import Point3D
 from MDAnalysis.analysis import rdf
 from sklearn.cluster import DBSCAN
 from matplotlib.colors import LogNorm
@@ -47,7 +45,7 @@ def obtain_rdf_coord(bins, rdf, coord_numbers):
 
     # Reject noise peaks by RDF height
     peak_ptr = 0
-    while peak_ptr < len(peak_index) and rdf[peak_index[peak_ptr]] < 0.1:
+    while peak_ptr < len(peak_index) and rdf[peak_index[peak_ptr]] < 1:
         peak_ptr += 1
 
     if peak_ptr >= len(peak_index):
@@ -355,8 +353,7 @@ def calc_population_parallel(
         results = [
             f.result()
             for f in tqdm(as_completed(futures),
-                          total=len(futures),
-                          desc="Processing trajectory")
+                          total=len(futures))
         ]
 
     sorted_results = sorted(results, key=lambda x: x[1])

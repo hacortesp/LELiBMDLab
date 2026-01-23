@@ -300,8 +300,7 @@ class TrajAnalysis:
         run_end: int,
         distance: float,
         center_atom: str,
-        counter_atom: str,
-        plot: bool = False,
+        counter_atom: str
     ):
        
         solve_dir = os.path.join(self.workdir, "solvatation_structure")
@@ -330,16 +329,16 @@ class TrajAnalysis:
 
         return df
 
-    def ion_cluster_population(self, run_start, run_end, center_atom, counter_atom, r_cut=3.2, core = 2):
+    def ion_cluster_population(self, run_start, run_end, center_atom, counter_atom, distance=3.2, core = 2):
 
         select_cations = center_atom
         select_anions = counter_atom
 
-        assoc_dir = os.path.join(self.workdir, "ionic_association")
+        assoc_dir = os.path.join(self.workdir, "ion_association")
         os.makedirs(assoc_dir, exist_ok=True)
 
-        png_path = os.path.join(assoc_dir, "ionic_association_matrix.png")
-        csv_path = os.path.join(assoc_dir, "ionic_association.csv")
+        png_path = os.path.join(assoc_dir, "ion_association_matrix.png")
+        csv_path = os.path.join(assoc_dir, "ion_association.csv")
 
         calc_population_parallel(
             self.run_wrap,
@@ -347,7 +346,7 @@ class TrajAnalysis:
             run_end,
             select_cations,
             select_anions,
-            r_cut,
+            distance,
             core,
             csv_path,
             png_path,

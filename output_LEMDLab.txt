@@ -1,18 +1,5 @@
 
-===== Calculating coordination =====
-Li–PF6, coordination number: 0.01, distance: 3.17 Å
-Li–EC, coordination number: 3.10, distance: 4.17 Å
-Li–DMC, coordination number: 2.59, distance: 4.17 Å
 ===== Calculating ion association =====
-Min distance: 3.610511541366577
-Min distance: 3.2449963092803955
-Min distance: 3.6926143169403076
-Min distance: 3.537598133087158
-Min distance: 3.4363064765930176
-Min distance: 3.4893412590026855
-Min distance: 3.478865623474121
-Min distance: 3.597512722015381
-Min distance: 3.760111093521118
-Min distance: 3.522101402282715
+Writing files in ion_association folder
 
-Time elapsed = 0.3660 minutes
+Time elapsed = 0.1345 minutes
