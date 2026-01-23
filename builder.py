@@ -173,7 +173,6 @@ analysis = TrajAnalysis(
 )
 
 
-
 print("\n===== Calculating ion association =====")
 
 analysis.ion_cluster_population(
