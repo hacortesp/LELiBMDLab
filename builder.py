@@ -180,13 +180,43 @@ analysis = TrajAnalysis(
     anion_name=anion_sel,
 )
 
+print("\n===== Calculating coordination =====")
+
+# 1) Cation–Anion
+distance, coord = analysis.coordination_number(cation_sel, anion_sel)
+print(
+    f"{args.cation_name}–{args.anion_name}, "
+    f"coordination number: {float(coord):.2f}, "
+    f"distance: {float(distance):.2f} Å"
+)
+
+# 2) Cation–Solvents
+for solvent in args.solvents:
+    if solvent not in mol_dict:
+        raise KeyError(
+            f"Unknown solvent '{solvent}'. Available: {list(mol_dict)}"
+        )
+
+    solvent_sel = mol_dict[solvent]
+
+    distance, coord = analysis.coordination_number(cation_sel, solvent_sel)
+
+    print(
+        f"{args.cation_name}–{solvent}, "
+        f"coordination number: {float(coord):.2f}, "
+        f"distance: {float(distance):.2f} Å"
+    )
+
+
+print("\n===== Calculating ion association =====")
+
 analysis.ion_cluster_population(
-    run_start = 1000, 
-    run_end = 1100, 
+    run_start = 2990, 
+    run_end = 3000, 
     center_atom = mol_dict["Li"], 
     counter_atom = mol_dict["PF6"],
-    core = 2, 
-    plot = True
+    r_cut=3.2,
+    core = 2,
 )
 
 

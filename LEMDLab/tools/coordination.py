@@ -284,66 +284,83 @@ def compute_periodic_distance_matrix(
     return dist_matrix
 
 
-def calc_population_frame(ts, cations, anions, index):
-    all_atoms = cations + anions
-    print("cations:", cations, "\nanions:", anions.types[0])
-    positions = all_atoms.positions
-    box_size = ts.dimensions[0]
-
+def calc_population_frame_data(positions, box, types, index, r_cut):
     dist_matrix = compute_periodic_distance_matrix(
         positions=positions,
-        box_length=box_size,
+        box_length=box,
     )
 
     model = DBSCAN(
-        eps=2.0,
-        min_samples=1,        # preserves original clustering behavior
+        eps=r_cut,
+        min_samples=1,
         metric="precomputed",
-        n_jobs=-1,
     )
 
     labels = model.fit_predict(dist_matrix)
 
-    all_clusters = []
-    for lbl in np.unique(labels):
-        cluster = np.where(labels == lbl)[0].tolist()
-        all_clusters.append(cluster)
-
-    type_id = cations.types[0]
-    type_id3 = anions.types[0]
     pop_matrix = np.zeros((50, 50, 1))
+    cation_type = types[0]
+    anion_type = np.unique(types[types != cation_type])[0]
 
-    for cluster in all_clusters:
-        cations_count = 0
-        anions_count = 0
+    for lbl in np.unique(labels):
+        cluster = np.where(labels == lbl)[0]
 
-        for atom_id in cluster:
-            if all_atoms[atom_id].type == type_id:
-                cations_count += 1
-            if all_atoms[atom_id].type == type_id3:
-                anions_count += 1
+        c_count = np.sum(types[cluster] == cation_type)
+        a_count = np.sum(types[cluster] == anion_type)
 
-        if cations_count < 50 and anions_count < 50:
-            pop_matrix[cations_count][anions_count] += 1
+        if c_count < 50 and a_count < 50:
+            pop_matrix[c_count, a_count] += 1
 
     return pop_matrix, index
 
 
-def calc_population_parallel(run, run_start, run_end, select_cations, select_anions, core, plot):
+def calc_population_parallel(
+    run,
+    run_start,
+    run_end,
+    select_cations,
+    select_anions,
+    r_cut,
+    core,
+    csv_path,
+    png_path,
+):
     stacked_population = np.array([])
 
     with ProcessPoolExecutor(max_workers=core) as executor:
         futures = []
-        for idx, ts in enumerate(run.trajectory[run_start:run_end]):
+
+        for idx in range(run_start, run_end):
+            run.trajectory[idx]
+
             cations = run.select_atoms(select_cations)
             anions = run.select_atoms(select_anions)
-            futures.append(executor.submit(calc_population_frame, ts, cations, anions, idx))
 
-        results = [future.result() for future in
-                   tqdm(as_completed(futures), total=len(futures), desc='Processing trajectory')]
+            # ✅ COPY DATA — CRITICAL
+            positions = (cations + anions).positions.copy()
+            box = run.trajectory.ts.dimensions[:3].copy()
+            types = (cations + anions).types.copy()
 
-    # Sort results by index and combine
+            futures.append(
+                executor.submit(
+                    calc_population_frame_data,
+                    positions,
+                    box,
+                    types,
+                    idx,
+                    r_cut,
+                )
+            )
+
+        results = [
+            f.result()
+            for f in tqdm(as_completed(futures),
+                          total=len(futures),
+                          desc="Processing trajectory")
+        ]
+
     sorted_results = sorted(results, key=lambda x: x[1])
+
     for current_population, _ in sorted_results:
         if stacked_population.size == 0:
             stacked_population = current_population
@@ -351,14 +368,12 @@ def calc_population_parallel(run, run_start, run_end, select_cations, select_ani
             stacked_population = np.dstack((stacked_population, current_population))
 
     avg_population = np.mean(stacked_population, axis=2)
-    np.savetxt('avg_population.txt', avg_population, fmt='%.6f')
+    np.savetxt(csv_path, avg_population, fmt="%.6f")
+    plot_population_heatmap(avg_population, png_path)
 
-    if plot:
-        plot_population_heatmap(avg_population)
 
-    return 'avg_population.txt'
 
-def plot_population_heatmap(avg_population):
+def plot_population_heatmap(avg_population, png_path):
     rc("text", usetex=False)
     rc("font", family="serif")
 
@@ -370,9 +385,9 @@ def plot_population_heatmap(avg_population):
     mat_plot[mat_plot <= 0] = 1e-12
 
     # --- CHANGE 1: colormap ---
-    colors = ["#f8f9fb", "#406179", "#004474"]  # dark blue → blue → yellow
+    colors = ["#f8f9fb", "#5B656D", "#004474"]  # dark blue → blue → yellow
     cmap = LinearSegmentedColormap.from_list("custom_blue_yellow", colors)
-    norm = LogNorm(vmin=1e-5, vmax=1e2)
+    norm = LogNorm(vmin=1e-4, vmax=1e2)
 
     plt.figure(figsize=(10, 8))
     ax = sns.heatmap(
@@ -432,45 +447,8 @@ def plot_population_heatmap(avg_population):
     ax.set_ylabel(r"$n-$", fontsize=26, labelpad=20)
 
     plt.tight_layout()
-    plt.savefig("clusters.png", dpi=300, bbox_inches="tight")
+    plt.savefig(png_path, dpi=300, bbox_inches="tight")
     plt.close()
 
-
-def minimum_image_displacement(
-    x0: np.ndarray,
-    x1: np.ndarray,
-    box_length: np.ndarray | float,
-) -> np.ndarray:
-    """Return the displacement vector under periodic boundary conditions.
-
-    Parameters
-    ----------
-    x0, x1
-        Arrays containing the reference coordinates. Broadcasting between the
-        two operands is supported, matching the behaviour of ``numpy``
-        arithmetic.
-    box_length
-        Simulation box lengths. Either a scalar (cubic box) or an array-like
-        object with three components describing the orthogonal box lengths.
-
-    Returns
-    -------
-    numpy.ndarray
-        The displacement vectors taking the minimum image convention into
-        account.
-    """
-
-    delta = np.asarray(x1) - np.asarray(x0)
-    box = np.asarray(box_length)
-
-    # ``ts.dimensions`` may provide 6 values (length + angles).  Only the
-    # translational components are relevant for the minimum image convention.
-    if box.ndim > 0 and box.shape[-1] == 6:
-        box = box[..., :3]
-
-    half_box = 0.5 * box
-    delta = np.where(delta > half_box, delta - box, delta)
-    delta = np.where(delta < -half_box, delta + box, delta)
-    return delta
 
 

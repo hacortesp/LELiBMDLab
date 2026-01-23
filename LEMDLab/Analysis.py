@@ -329,11 +329,17 @@ class TrajAnalysis:
         df.to_csv(csv_path, index=False, sep="\t")
 
         return df
-    
-    def ion_cluster_population(self, run_start, run_end, center_atom, counter_atom, core = 2, plot = False):
+
+    def ion_cluster_population(self, run_start, run_end, center_atom, counter_atom, r_cut=3.2, core = 2):
 
         select_cations = center_atom
         select_anions = counter_atom
+
+        assoc_dir = os.path.join(self.workdir, "ionic_association")
+        os.makedirs(assoc_dir, exist_ok=True)
+
+        png_path = os.path.join(assoc_dir, "ionic_association_matrix.png")
+        csv_path = os.path.join(assoc_dir, "ionic_association.csv")
 
         calc_population_parallel(
             self.run_wrap,
@@ -341,6 +347,8 @@ class TrajAnalysis:
             run_end,
             select_cations,
             select_anions,
+            r_cut,
             core,
-            plot,
+            csv_path,
+            png_path,
         )
