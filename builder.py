@@ -160,14 +160,6 @@ except KeyError:
     raise KeyError(f"Unknown anion_name '{args.anion_name}'. Available: {list(mol_dict)}")
 
 
-
-select_dict = {
-    "cation": "resname LIP and name LI",
-    "anion": "resname _PF and name P1",
-    "organic": "resname MOL and name O",
-}
-
-
 analysis = TrajAnalysis(
     workdir=args.workdir,
     tpr_file=args.tpr_file,
@@ -189,7 +181,7 @@ analysis.ion_cluster_population(
     run_end = 3000, 
     center_atom = mol_dict["Li"], 
     counter_atom = mol_dict["PF6"],
-    distance=3.3,
+    distance=2.7,
     core = 2,
 )
 print("Writing files in ion_association folder")
