@@ -3,6 +3,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 from typing import Dict
+
+from matplotlib import lines
 from LEMDLab.GROMACSrun import GROMACSrun
 
 
@@ -127,22 +129,24 @@ class MDsim:
     def _classify_molecules(self) -> None:
         self.solvents: Dict[str, int] = {}
         self.anions: Dict[str, int] = {}
-
-        if CATION_NAME not in self.molecule_counts:
-            raise ValueError(f"Missing cation '{CATION_NAME}' in Packmol input.")
+        self.cations: Dict[str, int] = {}
 
         for mol, n in self.molecule_counts.items():
             if mol == CATION_NAME:
-                continue
-            if mol in SOLVENT_ITP_MAP:
+                self.cations[mol] = n
+            elif mol in SOLVENT_ITP_MAP:
                 self.solvents[mol] = n
             elif mol in SALT_ANION_ITP_MAP:
                 self.anions[mol] = n
             else:
                 raise KeyError(f"Unknown molecule '{mol}' not in solvent or salt maps.")
 
-        if not self.anions:
-            raise ValueError("No salt anions detected.")
+        # consistency checks
+        if self.anions and not self.cations:
+            raise ValueError("Anions present but no cations found.")
+
+        if self.cations and not self.anions:
+            raise ValueError("Cations present but no anions found.")
 
     # ========================================================
     # Charge scaling
@@ -161,7 +165,17 @@ class MDsim:
         scale_tag = f"{self.charge_scale:.4f}".replace(".", "p")
         self.scaled_itp: Dict[str, str] = {}
 
-        species = [(CATION_NAME, True)] + [(a, False) for a in self.anions]
+        species = []
+
+        if self.cations:
+            species.append((CATION_NAME, True))
+
+        for a in self.anions:
+            species.append((a, False))
+
+        if not species:
+            self.scaled_itp = None
+            return
 
         for mol, has_mass in species:
             src = itp_dir / f"{mol}.itp"
@@ -205,12 +219,14 @@ class MDsim:
         ]
 
         # cation
-        li_itp = (
-            self.scaled_itp[CATION_NAME]
-            if self.scaled_itp
-            else f"{CATION_NAME}.itp"
-        )
-        lines.append(f'#include "{itp / li_itp}"')
+        if self.cations:
+            li_itp = (
+                self.scaled_itp[CATION_NAME]
+                if self.scaled_itp
+                else f"{CATION_NAME}.itp"
+            )
+            lines.append(f'#include "{itp / li_itp}"')
+
 
         # anions
         for a in self.anions:
@@ -233,7 +249,8 @@ class MDsim:
             "[ molecules ]",
         ]
 
-        lines.append(f"{CATION_NAME} {self.molecule_counts[CATION_NAME]}")
+        if self.cations:
+            lines.append(f"{CATION_NAME} {self.cations[CATION_NAME]}")
 
         for a, n in self.anions.items():
             lines.append(f"{a} {n}")

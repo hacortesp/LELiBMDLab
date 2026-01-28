@@ -133,11 +133,16 @@ class Builder:
         V_box_A3 = Lx * Ly * Lz
         V_box_L = V_box_A3 * 1e-27
 
-        n_salt_mol = self.salt_conc * V_box_L
-        N_pairs_float = n_salt_mol * NA
-        N_pairs = max(1, int(round(N_pairs_float)))
+        if self.salt_conc <= 0.0:
+            N_pairs_float = 0.0
+            N_pairs = 0
+            V_salt_A3 = 0.0
+        else:
+            n_salt_mol = self.salt_conc * V_box_L
+            N_pairs_float = n_salt_mol * NA
+            N_pairs = max(1, int(round(N_pairs_float)))
+            V_salt_A3 = N_pairs_float * SALT_DATA[self.salt]["Vmol"]
 
-        V_salt_A3 = N_pairs_float * SALT_DATA[self.salt]["Vmol"]
         V_solvent_A3 = V_box_A3 - V_salt_A3
 
         solvents = {}
@@ -177,10 +182,11 @@ class Builder:
         self.packmol_dir.mkdir(exist_ok=True)
 
         pdb_src = self.asset_dir / "pdb"
-        salt = SALT_DATA[self.salt]
 
-        for pdb in (salt["cation_pdb"], salt["anion_pdb"]):
-            shutil.copy2(pdb_src / pdb, self.packmol_dir / pdb)
+        if self.counts["salt"]["N_pairs"] > 0:
+            salt = SALT_DATA[self.salt]
+            for pdb in (salt["cation_pdb"], salt["anion_pdb"]):
+                shutil.copy2(pdb_src / pdb, self.packmol_dir / pdb)
 
         for name in self.solvents:
             shutil.copy2(
@@ -192,7 +198,7 @@ class Builder:
     # 3. PACKMOL
     # ========================================================
 
-    def write_packmol_input(self) -> None:
+    def write_packmol_input(self) -> str:
         Lx, Ly, Lz = self.box
         m = 0.5
 
@@ -210,36 +216,35 @@ class Builder:
             "",
         ]
 
-        salt = SALT_DATA[self.salt]
         N = self.counts["salt"]["N_pairs"]
 
-        # Li+
-        lines.extend([
-            "# >>>>> Electrolyte cation",
-            f"structure {salt['cation_pdb']}",
-            f"   number {N}",
-            "   resnumbers 3",
-            f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} "
-            f"{Lx:.3f} {Ly:.3f} {Lz:.3f}",
-            "   nloop 500",
-            "end structure",
-            "",
-        ])
+        if N > 0:
+            salt = SALT_DATA[self.salt]
 
-        # PF6-
-        lines.extend([
-            "# >>>>> Electrolyte anion",
-            f"structure {salt['anion_pdb']}",
-            f"   number {N}",
-            "   resnumbers 3",
-            f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} "
-            f"{x1:.3f} {y1:.3f} {z1:.3f}",
-            "   nloop 500",
-            "end structure",
-            "",
-        ])
+            lines.extend([
+                "# >>>>> Electrolyte cation",
+                f"structure {salt['cation_pdb']}",
+                f"   number {N}",
+                "   resnumbers 3",
+                f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} "
+                f"{Lx:.3f} {Ly:.3f} {Lz:.3f}",
+                "   nloop 500",
+                "end structure",
+                "",
+            ])
 
-        # Solvents
+            lines.extend([
+                "# >>>>> Electrolyte anion",
+                f"structure {salt['anion_pdb']}",
+                f"   number {N}",
+                "   resnumbers 3",
+                f"   inside box {x0:.3f} {y0:.3f} {z0:.3f} "
+                f"{x1:.3f} {y1:.3f} {z1:.3f}",
+                "   nloop 500",
+                "end structure",
+                "",
+            ])
+
         for name, info in self.counts["solvents"].items():
             lines.extend([
                 f"# >>>>> Solvent: {name}",

@@ -196,7 +196,7 @@ pbc             = xyz
             f"""\
 integrator              = md          
 dt                      = 0.002       
-nsteps                  = 100000 ;2000000     
+nsteps                  = 2000000     
 tinit                   = 0
 
 nstxout                 = 0           
@@ -248,7 +248,7 @@ continuation            = no
             f"""\
 integrator              = md
 dt                      = 0.002    ; 2 fs
-nsteps                  = 100000    ; 6000000 12 ns
+nsteps                  = 6000000  ;12 ns
 
 nstlog                  = 1000
 nstcalcenergy           = 100

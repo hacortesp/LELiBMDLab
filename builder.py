@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument(
         "-salt-conc",
         type=float,
-        default=1.0,
+        default=0.0,
         help="Salt concentration in mol/L (default: 1.0).",
     )
 
@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument(
         "-workdir",
         type=str,
-        default="./simulation_test",
+        default="./solvents",
         help="Working directory for simulation files (default: workdir).",
     )
 
@@ -160,6 +160,16 @@ except KeyError:
     raise KeyError(f"Unknown anion_name '{args.anion_name}'. Available: {list(mol_dict)}")
 
 
+MDsim(
+    charge_scale=args.charge_scale,
+    workdir=args.workdir,
+    parallel=args.parallel,
+    temperature=args.temperature,
+    gmx_exec=args.gromacs_exec,
+)
+
+
+"""
 analysis = TrajAnalysis(
     workdir=args.workdir,
     tpr_file=args.tpr_file,
@@ -172,31 +182,6 @@ analysis = TrajAnalysis(
     anion_name=anion_sel,
 )
 
-
-print("\n===== Calculating solvatation structure =====")
-
-df = analysis.coordination_type(
-    run_start = 1500, 
-    run_end = 3000, 
-    distance = 2.7, 
-    center_atom = mol_dict["Li"], 
-    counter_atom = mol_dict["PF6"]
-)
-print("Writing files in solvatation_structure folder")
-print("Consider:")
-print("*Solvent-separated ion pairs (SSIP)")
-print("*Contact ion pairs (CIP)")
-print("*Aggregate (AGG)")
-
-for _, row in df.iterrows():
-    print(f"{row['Solvation structure'].upper():>4s}  = {row['Percentage']}")
-
-
-
-
-
-
-"""
 
 print("\n===== Calculating solvatation structure =====")
 
@@ -271,10 +256,7 @@ t = analysis.transfer_number()
 print(f"t₊ = {t:.2f}")
 
 
-"""
 
-
-"""
 Builder(
     box=args.box,
     salt=args.anion_name,
