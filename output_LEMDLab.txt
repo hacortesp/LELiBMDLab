@@ -1,5 +1,10 @@
 
-===== Calculating ion association =====
-Writing files in ion_association folder
+===== Calculating solvatation structure =====
+Writing files in solvatation_structure folder
+Consider:
+*Solvent-separated ion pairs (SSIP)
+*Contact ion pairs (CIP)
+*Aggregate (AGG)
+SSIP  = 100.0000%
 
-Time elapsed = 0.2385 minutes
+Time elapsed = 1.5969 minutes

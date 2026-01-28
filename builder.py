@@ -173,17 +173,27 @@ analysis = TrajAnalysis(
 )
 
 
-print("\n===== Calculating ion association =====")
+print("\n===== Calculating solvatation structure =====")
 
-analysis.ion_cluster_population(
+df = analysis.coordination_type(
     run_start = 1500, 
     run_end = 3000, 
+    distance = 2.7, 
     center_atom = mol_dict["Li"], 
-    counter_atom = mol_dict["PF6"],
-    distance=2.7,
-    core = 2,
+    counter_atom = mol_dict["PF6"]
 )
-print("Writing files in ion_association folder")
+print("Writing files in solvatation_structure folder")
+print("Consider:")
+print("*Solvent-separated ion pairs (SSIP)")
+print("*Contact ion pairs (CIP)")
+print("*Aggregate (AGG)")
+
+for _, row in df.iterrows():
+    print(f"{row['Solvation structure'].upper():>4s}  = {row['Percentage']}")
+
+
+
+
 
 
 """
@@ -235,6 +245,17 @@ for solvent in args.solvents:
     )
 print("Writing files in coordination_files folder")
 
+print("\n===== Calculating ion association =====")
+
+analysis.ion_cluster_population(
+    run_start = 1500, 
+    run_end = 3000, 
+    center_atom = mol_dict["Li"], 
+    counter_atom = mol_dict["PF6"],
+    distance=2.7,
+    core = 2,
+)
+print("Writing files in ion_association folder")
 
 print("===== Calculating conductivity =====")
 cond = analysis.conductivity()
