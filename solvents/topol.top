@@ -1,8 +1,8 @@
 ; Auto-generated topology
-#include "/home/hacortes/Li-EMDLab/LEMDLab/forcefield/forcefield.itp"
+#include "/scratch/hacortes/ADOBADO/LEMD-lab/LEMDLab/forcefield/forcefield.itp"
 
-#include "/home/hacortes/Li-EMDLab/LEMDLab/itp/EC_TraPPE.itp"
-#include "/home/hacortes/Li-EMDLab/LEMDLab/itp/DMC_TraPPE.itp"
+#include "/scratch/hacortes/ADOBADO/LEMD-lab/LEMDLab/itp/EC_TraPPE.itp"
+#include "/scratch/hacortes/ADOBADO/LEMD-lab/LEMDLab/itp/DMC_TraPPE.itp"
 
 [ system ]
 Electrolyte system

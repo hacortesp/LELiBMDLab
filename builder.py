@@ -159,15 +159,28 @@ try:
 except KeyError:
     raise KeyError(f"Unknown anion_name '{args.anion_name}'. Available: {list(mol_dict)}")
 
-
-MDsim(
-    charge_scale=args.charge_scale,
+analysis = TrajAnalysis(
     workdir=args.workdir,
-    parallel=args.parallel,
+    tpr_file=args.tpr_file,
+    xtc_wrap_file=args.xtc_wrap_file,
+    xtc_unwrap_file=args.xtc_unwrap_file,
+    dt=args.dt,
+    dt_collection=args.dt_collection,
     temperature=args.temperature,
-    gmx_exec=args.gromacs_exec,
+    cation_name=cation_sel,
+    anion_name=anion_sel,
 )
 
+print("\n===== Calculating permittivity =====")
+epsilon = analysis.permittivity(
+    run_start = 1500, 
+    run_end = 2000,
+    temperature= 300,
+    atom_selection="all", 
+)
+
+#atom_selection="resname _EC"
+print(f"Dielectric constant = {epsilon:.2f}\n")
 
 """
 analysis = TrajAnalysis(

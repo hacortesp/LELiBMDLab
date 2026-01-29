@@ -1,17 +1,17 @@
 ;
 ;	File 'mdout.mdp' was generated
-;	By user: unknown (1001)
-;	On host: DULX0114
-;	At date: Wed Jan 28 13:41:16 2026
+;	By user: unknown (5682)
+;	On host: atlas-349
+;	At date: Wed Jan 28 14:59:19 2026
 ;
 ;	Created by:
-;	             :-) GROMACS - gmx grompp, 2020.1-Ubuntu-2020.1-1 (-:
+;	                     :-) GROMACS - gmx grompp, 2019.4 (-:
 ;	
-;	Executable:   /usr/bin/gmx
-;	Data prefix:  /usr
-;	Working dir:  /home/hacortes/Li-EMDLab/solvents
+;	Executable:   /scicomp/EasyBuild/CentOS/7.4.1708/Skylake/software/GROMACS/2019.4-foss-2019b/bin/gmx_mpi
+;	Data prefix:  /scicomp/EasyBuild/CentOS/7.4.1708/Skylake/software/GROMACS/2019.4-foss-2019b
+;	Working dir:  /scratch/hacortes/ADOBADO/LEMD-lab/solvents
 ;	Command line:
-;	  gmx grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1
+;	  gmx_mpi grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1
 
 ; VARIOUS PREPROCESSING OPTIONS
 ; Preprocessor information: use cpp syntax.
@@ -25,7 +25,7 @@ integrator               = md
 ; Start time and timestep in ps
 tinit                    = 0
 dt                       = 0.002
-nsteps                   = 2000000
+nsteps                   = 6000000
 ; For exact run continuation or redoing part of a run
 init-step                = 0
 ; Part index is updated automatically on checkpointing (keeps files separate)
@@ -77,10 +77,12 @@ compressed-x-grps        =
 energygrps               = 
 
 ; NEIGHBORSEARCHING PARAMETERS
-; cut-off scheme (Verlet: particle based cut-offs)
+; cut-off scheme (Verlet: particle based cut-offs, group: using charge groups)
 cutoff-scheme            = Verlet
 ; nblist update frequency
 nstlist                  = 10
+; ns algorithm (simple or grid)
+ns_type                  = grid
 ; Periodic boundary conditions: xyz, no, xy
 pbc                      = xyz
 periodic-molecules       = no
@@ -139,13 +141,13 @@ tc-grps                  = System
 tau-t                    = 0.1
 ref-t                    = 298.0
 ; pressure coupling     
-Pcoupl                   = Berendsen
-Pcoupltype               = isotropic
+Pcoupl                   = no
+pcoupltype               = Isotropic
 nstpcouple               = -1
 ; Time constant (ps), compressibility (1/bar) and reference P (bar)
-tau-p                    = 1.0
-compressibility          = 5e-5
-ref-p                    = 1.0
+tau-p                    = 1
+compressibility          = 
+ref-p                    = 
 ; Scaling of reference coordinates, No, All or COM
 refcoord-scaling         = No
 
@@ -185,9 +187,9 @@ annealing-time           =
 annealing-temp           = 
 
 ; GENERATE VELOCITIES FOR STARTUP RUN
-gen_vel                  = yes
-gen_temp                 = 298.0
-gen_seed                 = -1
+gen-vel                  = no
+gen-temp                 = 300
+gen-seed                 = -1
 
 ; OPTIONS FOR BONDS    
 constraints              = all-bonds
@@ -325,6 +327,3 @@ userreal4                = 0
 electric-field-x         = 0 0 0 0
 electric-field-y         = 0 0 0 0
 electric-field-z         = 0 0 0 0
-
-; Density guided simulation
-density-guided-simulation-active = false

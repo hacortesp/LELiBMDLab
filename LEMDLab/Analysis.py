@@ -3,6 +3,7 @@ import math
 import pandas as pd
 import numpy as np
 import MDAnalysis as mda
+from MDAnalysis.analysis.dielectric import DielectricConstant
 
 
 from LEMDLab.tools.msd import (
@@ -25,18 +26,11 @@ from LEMDLab.tools.coordination import (
     calc_population_parallel
 )
 
-"""
-from LEMDLab.tools.ion_dynamics import (
-    process_traj,
-    calc_tau3,
-    calc_delta_n_square,
-    calc_tau1,
-    ms_endtoend_distance,
-    fit_rouse_model,
-    calc_msd_M2
+
+from LEMDLab.tools.permitivity import (
+    calc_permittivity
 )
 
-"""
 
 kb = 1.38E-23
 q =  1.60E-19
@@ -351,3 +345,36 @@ class TrajAnalysis:
             csv_path,
             png_path,
         )
+
+        # ========================= Activity ========================= 
+    def permittivity(
+        self,
+        run_start,
+        run_end,
+        temperature,
+        atom_selection,
+        make_whole=True,
+    ):
+        
+        # Resolve atom group
+        if atom_selection is None:
+            atomgroup = self.run_wrap.atoms
+        elif isinstance(atom_selection, str):
+            atomgroup = self.run_wrap.select_atoms(atom_selection)
+        else:
+            atomgroup = atom_selection
+
+        if atomgroup.n_atoms == 0:
+            raise ValueError("Atom selection resulted in an empty AtomGroup.")
+
+        diel = DielectricConstant(
+            atomgroup,
+            temperature=temperature,
+            make_whole=make_whole
+        )
+
+        diel.run(start=run_start, stop=run_end)
+
+        # Return scalar dielectric constant
+        return diel.results.eps_mean
+  
