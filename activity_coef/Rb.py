@@ -30,12 +30,10 @@ def born_radius_from_dft(delta_g_kj_mol, z, eps_r):
     Invert Supplementary Eq. (1) to obtain R_B
     """
     delta_g = delta_g_kj_mol * 1e3 / NA  # J per particle
+    print(delta_g, delta_g_kj_mol)
 
-    numerator = z**2 * e**2
-    denominator = 8.0 * np.pi * eps0 * delta_g
-    dielectric_term = (1.0 / eps_r) - 1.0
 
-    R = numerator / denominator * dielectric_term
+    R = (z**2 * e**2) / (8.0 * np.pi * eps0 * delta_g) * ((1.0 / eps_r) - 1.0)
     return R * 1e10  # meters → Å
 
 
