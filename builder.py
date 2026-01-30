@@ -44,7 +44,7 @@ def parse_args():
         "-solvents",
         nargs="+",
         type=str,
-        default=["EC", "DMC"],
+        default=["DMC"],
         help="List of solvents (default: EC DMC).",
     )
 
@@ -52,14 +52,14 @@ def parse_args():
         "-solvent-fracs",
         nargs="+",
         type=float,
-        default=[0.5, 0.5],
+        default=[1.0],
         help="Relative solvent volume fractions (default: 0.5 0.5).",
     )
 
     parser.add_argument(
         "-workdir",
         type=str,
-        default="./solvents",
+        default="./DMC_solv",
         help="Working directory for simulation files (default: workdir).",
     )
 
@@ -159,6 +159,26 @@ try:
 except KeyError:
     raise KeyError(f"Unknown anion_name '{args.anion_name}'. Available: {list(mol_dict)}")
 
+
+Builder(
+    box=args.box,
+    salt=args.anion_name,
+    salt_conc=args.salt_conc,
+    solvents=args.solvents,
+    solvent_fracs=args.solvent_fracs,
+    workdir=args.workdir,
+
+)
+
+MDsim(
+    charge_scale=args.charge_scale,
+    workdir=args.workdir,
+    parallel=args.parallel,
+    temperature=args.temperature,
+    gmx_exec=args.gromacs_exec,
+)
+
+"""
 analysis = TrajAnalysis(
     workdir=args.workdir,
     tpr_file=args.tpr_file,
@@ -182,7 +202,6 @@ epsilon = analysis.permittivity(
 #atom_selection="resname _EC"
 print(f"Dielectric constant = {epsilon:.2f}\n")
 
-"""
 analysis = TrajAnalysis(
     workdir=args.workdir,
     tpr_file=args.tpr_file,
