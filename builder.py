@@ -285,7 +285,7 @@ for species, D in diff.items():
 
 print("\n===== Calculating transfer number =====")
 t = analysis.transfer_number()
-print(f"t₊ = {t:.2f}")
+print(f"t+ = {t:.2f}")
 
 
 
