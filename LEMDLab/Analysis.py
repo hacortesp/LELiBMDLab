@@ -27,22 +27,23 @@ from LEMDLab.tools.coordination import (
 )
 
 
-from LEMDLab.tools.permitivity import (
-    calc_permittivity
+from LEMDLab.tools.activity import (
+    calc_activity,
+    born_radius
 )
 
 
-kb = 1.38E-23
-q =  1.60E-19
+kb = 1.38E-23 # J K^-1
+q =  1.60E-19 # C
+NA = 6.02214076e23 # mol^-1
+AMU_TO_KG = 1.66053906660e-27
 convertion_factor = 1e22
+
 
 class TrajAnalysis:
     def __init__(
         self,
         workdir: str,
-        tpr_file: str = "nvt_prod_wrap.tpr",
-        xtc_wrap_file: str = "nvt_wrap.xtc",
-        xtc_unwrap_file: str = "nvt_unwrap.xtc",
         dt: float = 0.002,
         dt_collection: int = 2000,
         temperature: float = 300.0,
@@ -51,19 +52,16 @@ class TrajAnalysis:
         q_eff: float = 0.85,
     ):
         self.workdir = workdir
-        self.xtc_wrap_file = xtc_wrap_file
-        self.xtc_unwrap_file = xtc_unwrap_file
         self.dt = dt
         self.dt_collection = dt_collection
         self.temp = temperature
         self.cation_name = cation_name
         self.anion_name = anion_name
-        self.q_eff =  q_eff
-        self.kbT = kb * self.temp
+        self.q_eff =  q_eff  
         
-        tpr_path = os.path.join(self.workdir, tpr_file)
-        wrap_xtc_path = os.path.join(self.workdir, xtc_wrap_file)
-        unwrap_xtc_path = os.path.join(self.workdir, xtc_unwrap_file)
+        tpr_path = os.path.join(self.workdir, "nvt_prod_wrap.tpr")
+        wrap_xtc_path = os.path.join(self.workdir, "nvt_prod_wrap.xtc")
+        unwrap_xtc_path = os.path.join(self.workdir, "nvt_prod_unwrap.xtc")
 
         self.run_wrap = mda.Universe(tpr_path, wrap_xtc_path)
         self.run_unwrap = mda.Universe(tpr_path, unwrap_xtc_path)
@@ -76,6 +74,17 @@ class TrajAnalysis:
         self.num_anion = len(self.anions_unwrap)
         self.num_frames = self.run_unwrap.trajectory.n_frames
         self.run_end = self.num_frames * self.dt_collection
+
+        print("===== Electrolyte information =====")
+        V_m3 = self.volume * 1e-30
+        m_sol_kg = self.run_wrap.atoms.masses.sum() * AMU_TO_KG
+        rho_kg_m3 = m_sol_kg / V_m3  #kg·m^⁻3
+        rho_g_cm3 = rho_kg_m3 * 1e-3
+        print(f"Density: {rho_g_cm3:.4f} g·cm^-3")
+
+        vsol_L = self.volume * 1e-27
+        c_m = self.num_cation / NA / vsol_L
+        print(f"Concentration: {c_m:.2f} mol L^-1")
 
 # ========================= conductivity =========================
     def conductivity(self): 
@@ -346,35 +355,118 @@ class TrajAnalysis:
             png_path,
         )
 
-        # ========================= Activity ========================= 
+# ========================= Activity =========================
+    def activity(
+        self,        
+        run_start: int,
+        run_end: int,
+        solv_dir: str,
+    ):
+
+        a = 3.6e-10  # ion-size parameter (m)
+        R_plus = 1.52e-10  # Born radius of cation (m)
+        R_minus = 2.06e-10  # Born radius of anion (m)
+
+        eps_sol = self.permittivity(
+            run_start,
+            run_end,
+            temperature=self.temp,
+            trajdir=self.workdir,
+        )  
+
+        eps_solv = self.permittivity(
+            run_start,
+            run_end,
+            temperature=self.temp,
+            trajdir=solv_dir,
+        )
+
+        solv_tpr_path = os.path.join(solv_dir, "nvt_prod_wrap.tpr")
+        solv_xtc_path = os.path.join(solv_dir, "nvt_prod_wrap.xtc")
+
+        solv_wrap = mda.Universe(solv_tpr_path, solv_xtc_path)
+        
+        V_m3_solv = solv_wrap.coord.volume * 1e-30
+        m_solv_kg = solv_wrap.atoms.masses.sum() * AMU_TO_KG
+        rho_solv = m_solv_kg / V_m3_solv #kg·m^⁻3
+
+        z_plus = 1 * self.q_eff
+        z_minus = -1 * self.q_eff
+
+        n_salt = self.num_cation / NA
+
+        c = n_salt / m_solv_kg        
+       
+        Rb_plus, Rb_minus = born_radius(z_plus, z_minus, eps_solv)
+        
+        gamma_DH, gamma_B, gamma_DH_B = calc_activity(
+            c,
+            rho_solv,
+            eps_solv,
+            eps_sol,
+            temp=self.temp,
+            a=a,
+            R_plus=R_plus,
+            R_minus=R_minus,
+        )
+        gamma_DH, gamma_B, gamma_DH_B
+  
+        return gamma_DH, gamma_B, gamma_DH_B
+
+
     def permittivity(
         self,
-        run_start,
-        run_end,
-        temperature,
-        atom_selection,
-        make_whole=True,
+        run_start: int,
+        run_end: int,
+        temperature: float,
+        trajdir: str | None = None,
     ):
-        
-        # Resolve atom group
-        if atom_selection is None:
-            atomgroup = self.run_wrap.atoms
-        elif isinstance(atom_selection, str):
-            atomgroup = self.run_wrap.select_atoms(atom_selection)
-        else:
-            atomgroup = atom_selection
+        make_whole = True
+        charge_tolerance = 1e-6
 
-        if atomgroup.n_atoms == 0:
-            raise ValueError("Atom selection resulted in an empty AtomGroup.")
+        # ---------- resolve universe ----------
+        if trajdir is None or trajdir == self.workdir:
+            run_wrap = self.run_wrap
+        else:
+            solv_tpr_path = os.path.join(trajdir, "nvt_prod_wrap.tpr")
+            solv_xtc_path = os.path.join(trajdir, "nvt_prod_wrap.xtc")
+            if not os.path.isfile(solv_tpr_path):
+                raise FileNotFoundError(solv_tpr_path)
+            if not os.path.isfile(solv_xtc_path):
+                raise FileNotFoundError(solv_xtc_path)
+
+            run_wrap = mda.Universe(solv_tpr_path, solv_xtc_path)
+
+        atoms = run_wrap.atoms
+
+        if atoms.n_atoms == 0:
+            raise ValueError("Universe contains no atoms.")
+
+        if not hasattr(atoms, "charges"):
+            raise AttributeError(
+                "Atoms do not have charges. Ensure the topology includes charges."
+            )
+
+        neutral_atomgroups = [
+            res.atoms
+            for res in atoms.residues
+            if abs(res.atoms.total_charge()) <= charge_tolerance
+        ]
+
+        if not neutral_atomgroups:
+            raise ValueError("No neutral molecules found.")
+
+        atomgroup = neutral_atomgroups[0]
+        for ag in neutral_atomgroups[1:]:
+            atomgroup += ag
 
         diel = DielectricConstant(
             atomgroup,
             temperature=temperature,
-            make_whole=make_whole
+            make_whole=make_whole,
         )
 
         diel.run(start=run_start, stop=run_end)
 
-        # Return scalar dielectric constant
         return diel.results.eps_mean
   

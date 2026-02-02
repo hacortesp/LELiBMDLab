@@ -56,7 +56,7 @@ class Builder:
 
     def __init__(
         self,
-        box: List[float],
+        box: float,
         salt: str,
         salt_conc: float,
         solvents: List[str],
@@ -64,7 +64,7 @@ class Builder:
         workdir: str,
     ) -> None:
 
-        self.box = box
+        self.box = [float(box)] * 3
         self.salt = salt
         self.salt_conc = salt_conc
         self.solvents = solvents

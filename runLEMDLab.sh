@@ -1,4 +1,4 @@
 #!/bin/bash 
 
 
-python builder.py >output_LEMDLab.txt
+python lemdlab.py >output_LEMDLab.txt
