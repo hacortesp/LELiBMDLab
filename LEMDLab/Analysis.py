@@ -28,8 +28,8 @@ from LEMDLab.tools.coordination import (
 
 
 from LEMDLab.tools.activity import (
-    calc_activity,
-    born_radius
+    born_radius,
+    calc_activity    
 )
 
 
@@ -76,6 +76,7 @@ class TrajAnalysis:
         self.run_end = self.num_frames * self.dt_collection
 
         print("===== Electrolyte information =====")
+        print(f"Work directory: {self.workdir}")
         V_m3 = self.volume * 1e-30
         m_sol_kg = self.run_wrap.atoms.masses.sum() * AMU_TO_KG
         rho_kg_m3 = m_sol_kg / V_m3  #kg·m^⁻3
@@ -360,12 +361,22 @@ class TrajAnalysis:
         self,        
         run_start: int,
         run_end: int,
-        solv_dir: str,
+        solv_dir: str
     ):
+        SELECTION_TO_ION = {
+        "resname LIP and name LI": 0.60,
+        "resname _PF and name P1": 2.42,
+        # add more as needed
+        }
 
-        a = 3.6e-10  # ion-size parameter (m)
-        R_plus = 1.52e-10  # Born radius of cation (m)
-        R_minus = 2.06e-10  # Born radius of anion (m)
+        # ---------- ion-size parameter ----------
+        try:
+            cation_ion = SELECTION_TO_ION[self.cation_name]
+            anion_ion = SELECTION_TO_ION[self.anion_name]
+        except KeyError as e:
+            raise ValueError(f"Unknown ion: {e}")
+        
+        a = (cation_ion + anion_ion) * 1e-10
 
         eps_sol = self.permittivity(
             run_start,
@@ -406,10 +417,17 @@ class TrajAnalysis:
             eps_sol,
             temp=self.temp,
             a=a,
-            R_plus=R_plus,
-            R_minus=R_minus,
+            R_plus=Rb_plus,
+            R_minus=Rb_minus,
         )
-        gamma_DH, gamma_B, gamma_DH_B
+
+        print(f"Concentration (mol kg^-1): {c:.4f}")
+        print(f"rho solvent (kg m^-3): {rho_solv:.2f}")
+        print(f"Dielectric constant solvent: {eps_solv:.2f}")
+        print(f"Dielectric constant solution: {eps_sol:.2f}")
+        print(f"Ion-size parameter a (m): {a:.2e}")
+        print(f"Born radius cation Rb+ (m): {Rb_plus:.2e}")
+        print(f"Born radius anion Rb- (m): {Rb_minus:.2e}")
   
         return gamma_DH, gamma_B, gamma_DH_B
 

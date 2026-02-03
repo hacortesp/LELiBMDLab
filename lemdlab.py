@@ -142,13 +142,13 @@ analysis = TrajAnalysis(
 )
 
 print("\n===== Calculating activity =====")
-z_plus, z_minus, eps_sol, eps_solv, c = analysis.activity(
+gamma_DH, gamma_B, gamma_DH_B = analysis.activity(
     run_start = 1500, 
     run_end = 1550,
     solv_dir="solvents"
 )
 
-print(f"Results {z_plus:.2f}, {z_minus:.2f}, {eps_sol:.2f}, {eps_solv:.2f}, {c:.2f}\n")
+print(f"Results {gamma_DH:.2f}, {gamma_B:.2f}, {gamma_DH_B:.2f}\n")
 
 """
 

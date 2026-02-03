@@ -1,10 +1,17 @@
 ===== Electrolyte information =====
-Density: 1.3242 g·cm^-3,  1.3242 g·mL^-1
+Work directory: ./simulation_test
+Density: 1.3242 g·cm^-3
 Concentration: 1.09 mol L^-1
 
 ===== Calculating activity =====
-Concentration (molality): 0.85 mol kg^-1
-Results 1.00, -1.00, 12.83, 24.17, 0.85
+Concentration (mol kg^-1): 0.8481
+rho solvent (kg m^-3): 1212.32
+Dielectric constant solvent: 24.17
+Dielectric constant solution: 12.83
+Ion-size parameter a (m): 3.02e-10
+Born radius cation Rb+ (m): 1.31e-10
+Born radius anion Rb- (m): 2.18e-10
+Results 0.01, 524.91, 3.01
 
 
-Time elapsed = 0.0934 minutes
+Time elapsed = 0.0956 minutes

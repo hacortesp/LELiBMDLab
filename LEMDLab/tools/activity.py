@@ -9,6 +9,7 @@ kB = 1.380649e-23 # J K^-1
 NA = 6.02214076e23 # mol^-1
 AMU_TO_KG = 1.66053906660e-27
 
+
 def calc_activity(
     c: float,
     rho_solv: float,
@@ -84,8 +85,7 @@ def born_radius(z_plus, z_minus, eps_solv):
 
     R_pos = (z_plus**2 * e**2) / (8.0 * np.pi * eps0_vac * delta_g_pos) * ((1.0 / eps_solv) - 1.0)
     R_neg = (z_minus**2 * e**2) / (8.0 * np.pi * eps0_vac * delta_g_neg) * ((1.0 / eps_solv) - 1.0)
-    return R_pos * 1e10, R_neg * 1e10  # meters → Å
-
+    return R_pos , R_neg 
 
 
 
