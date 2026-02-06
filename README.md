@@ -1,8 +1,8 @@
 <img src="./Icon.png" width="30%">
 
-## LLE-MDLab
+## LELiB-MDLab
 
-Li-ion Liquid Electrolyte Molecular Dynamics Lab (LLE-MDLab) is a Python-based command-line workflow designed for building, simulating, and analyzing liquid electrolytes composed by LiPF₆ salt and organic carbonate solvents (EC, DMC, PC, DEC, DME, EMC) parameterized with the TraPPE force field.
+Liquid Electrolytes for Li Batteries Molecular Dynamics Lab (LELiB-MDLab) is a Python-based command-line workflow for building, simulating, and analyzing liquid electrolytes for Li-ion batteries. The toolkit focuses on LiPF₆ salt dissolved in organic carbonate and ether solvents (EC, DMC, PC, DEC, DME, EMC), parameterized using the TraPPE force field.
 
 
 ## Installation Requirements:
