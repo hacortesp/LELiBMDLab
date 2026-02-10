@@ -14,4 +14,4 @@ Born radius anion Rb- (m): 2.18e-10
 Results 0.01, 524.91, 3.01
 
 
-Time elapsed = 0.0956 minutes
+Time elapsed = 0.0964 minutes

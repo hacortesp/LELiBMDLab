@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict
 
-from LEMDLab.GROMACSrun import GROMACSrun
+from LELiBMDLab.GROMACSrun import GROMACSrun
 
 
 # ============================================================

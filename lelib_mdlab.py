@@ -1,8 +1,8 @@
 import argparse
 from timeit import default_timer as timer
-from LEMDLab.SimulationCell import Builder
-from LEMDLab.MDSimulation import MDsim
-from LEMDLab.Analysis import TrajAnalysis
+from LELiBMDLab.SimulationCell import Builder
+from LELiBMDLab.MDSimulation import MDsim
+from LELiBMDLab.Analysis import TrajAnalysis
 
 
 def parse_args():
@@ -130,7 +130,6 @@ try:
 except KeyError:
     raise KeyError(f"Unknown anion_name '{args.anion_name}'. Available: {list(mol_dict)}")
 
-
 analysis = TrajAnalysis(
     workdir=args.workdir,
     dt=args.dt,
@@ -150,7 +149,28 @@ gamma_DH, gamma_B, gamma_DH_B = analysis.activity(
 
 print(f"Results {gamma_DH:.2f}, {gamma_B:.2f}, {gamma_DH_B:.2f}\n")
 
+
+
 """
+analysis = TrajAnalysis(
+    workdir=args.workdir,
+    dt=args.dt,
+    dt_collection=args.dt_collection,
+    temperature=args.temperature,
+    cation_name=cation_sel,
+    anion_name=anion_sel,
+    q_eff=args.charge_scale,
+)
+
+print("\n===== Calculating activity =====")
+gamma_DH, gamma_B, gamma_DH_B = analysis.activity(
+    run_start = 1500, 
+    run_end = 1550,
+    solv_dir="solvents"
+)
+
+print(f"Results {gamma_DH:.2f}, {gamma_B:.2f}, {gamma_DH_B:.2f}\n")
+
 
 print("\n===== Calculating permittivity =====")
 epsilon = analysis.permittivity(
@@ -258,7 +278,6 @@ Builder(
     workdir=args.workdir,
 
 )
-
 
 MDsim(
     charge_scale=args.charge_scale,

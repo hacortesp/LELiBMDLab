@@ -6,7 +6,7 @@ import MDAnalysis as mda
 from MDAnalysis.analysis.dielectric import DielectricConstant
 
 
-from LEMDLab.tools.msd import (
+from LELiBMDLab.tools.msd import (
     calc_Ltot,
     calc_Lii_self,
     calc_Lii,
@@ -18,7 +18,7 @@ from LEMDLab.tools.msd import (
     positions_array
 )
 
-from LEMDLab.tools.coordination import (
+from LELiBMDLab.tools.coordination import (
     calc_rdf_coord,
     obtain_rdf_coord,
     plot_rdf_coordination,  
@@ -27,7 +27,7 @@ from LEMDLab.tools.coordination import (
 )
 
 
-from LEMDLab.tools.activity import (
+from LELiBMDLab.tools.activity import (
     born_radius,
     calc_activity    
 )
