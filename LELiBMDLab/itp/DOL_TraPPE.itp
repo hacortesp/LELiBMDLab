@@ -1,0 +1,47 @@
+[ moleculetype ]
+; Name   nrexcl
+DOL       3
+
+[ atoms ]
+;  nr   type       resnr  resid  atom  cgnr  charge    mass
+    1   C_2241d     1    DOL      C2    1    0.278    14.0270
+    2   O_0241d     1    DOL      O3    1   -0.399    15.9994
+    3   O_0241d     1    DOL      O4    1   -0.399    15.9994
+    4   C_2241d     1    DOL      C5    1    0.260    14.0270
+    5   C_2241d     1    DOL      C6    1    0.260    14.0270
+
+;
+;        C2
+;      /    \
+;     O3    O4
+;      \    /
+;      C5–-C6
+;
+
+[ bonds ]
+;  ai   aj  funct
+    1    2    1
+    1    3    1
+    2    4    1
+    3    5    1
+    4    5    1
+
+[ pairs ]
+    1    5    1
+
+[ angles ]
+;  ai   aj   ak  funct
+    1    2    4    1
+    1    3    5    1
+    2    1    3    1
+    2    4    5    1
+    3    5    4    1
+
+[ dihedrals ]
+;  ai   aj   ak   al  func
+    1    2    4    5    3
+    1    3    5    4    3
+    2    1    3    5    3
+    2    4    5    3    3
+    3    1    2    4    3
+
