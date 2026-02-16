@@ -1,6 +1,6 @@
 [ moleculetype ]
 ; Name               nrexcl
-  TFS                  3
+  TFSI                 3
 
 [ atoms ]
 ;  nr        type    res     resname    atom  cgnr      charge

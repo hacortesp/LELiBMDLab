@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import List, Dict
 import shutil as _shutil
 
+from sympy import Li
+
 # ============================================================
 # CONSTANTS
 # ============================================================
@@ -36,6 +38,11 @@ SALT_DATA = {
         "Vmol": 168.162990597383,
         "cation_pdb": "Li.pdb",
         "anion_pdb": "PF6.pdb",
+    },
+    "TFSI": {
+        "Vmol": 358.439218642812,
+        "cation_pdb": "Li.pdb",
+        "anion_pdb": "TFSI.pdb",
     }
 }
 

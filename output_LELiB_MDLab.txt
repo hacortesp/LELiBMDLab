@@ -1,17 +1,58 @@
-===== Electrolyte information =====
-Work directory: ./simulation_test
-Density: 1.3242 g·cm^-3
-Concentration: 1.09 mol L^-1
+Analysing residue names:
+There are:   483      Other residues
+Analysing residues not classified as Protein/DNA/RNA/Water and splitting into groups...
+Calculating fourier grid dimensions for X Y Z
+Using a fourier grid of 36x36x36, spacing 0.111 0.111 0.111
+This run will generate roughly 0 Mb of data
+turning all bonds into constraints...
+turning all bonds into constraints...
+turning all bonds into constraints...
+turning all bonds into constraints...
+Analysing residue names:
+There are:   483      Other residues
+Analysing residues not classified as Protein/DNA/RNA/Water and splitting into groups...
+Determining Verlet buffer for a tolerance of 0.005 kJ/mol/ps at 298 K
+Calculated rlist for 1x1 atom pair-list as 1.400 nm, buffer size 0.000 nm
+Set rlist, assuming 4x4 atom pair-list, to 1.400 nm, buffer size 0.000 nm
+Note that mdrun will redetermine rlist based on the actual pair-list setup
+Calculating fourier grid dimensions for X Y Z
+Using a fourier grid of 36x36x36, spacing 0.111 0.111 0.111
+This run will generate roughly 23 Mb of data
+===== Simulation cell =====
+40.0 [Å] x 40.0 [Å] x 40.0 [Å]
+V_cell [nm^3]: 64.000
 
-===== Calculating activity =====
-Concentration (mol kg^-1): 0.8481
-rho solvent (kg m^-3): 1212.32
-Dielectric constant solvent: 24.17
-Dielectric constant solution: 12.83
-Ion-size parameter a (m): 3.02e-10
-Born radius cation Rb+ (m): 1.31e-10
-Born radius anion Rb- (m): 2.18e-10
-Results 0.01, 524.91, 3.01
 
 
-Time elapsed = 0.0964 minutes
+===== Salt =====
+TFSI: 39
+
+
+
+===== Solvents =====
+EC: 227 
+DMC: 178 
+
+
+
+===Creating simulation folders...===
+====Packmol input written to: /home/hacortes/Li-EMDLab/test_tfsi/simulation_cell=====
+Running Packmol
+Packmol finished. conf.pdb and packmol.log generated.
+
+Wrote /home/hacortes/Li-EMDLab/test_tfsi/em.mdp
+Wrote /home/hacortes/Li-EMDLab/test_tfsi/npt_eq.mdp
+Wrote /home/hacortes/Li-EMDLab/test_tfsi/nvt_prod.mdp
+
+
+
+===== Running GROMACS in LOCAL mode =====
+
+
+>>> gmx grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr
+
+>>> gmx mdrun -v -deffnm em
+
+>>> gmx grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1
+
+>>> gmx mdrun -deffnm npt_eq

@@ -1,0 +1,28 @@
+[  moleculetype  ]
+;    name   nrexcl
+CLO4     3
+
+[ atoms ]
+;  nr        type    res     resname    atom  cgnr      charge
+    1        Cl_01     1         CLO       CL     1     1.176
+    2        O_002     1         CLO       O2     2    -0.544
+    3        O_002     1         CLO       O2     3    -0.544
+    4        O_002     1         CLO       O2     4    -0.544
+    5        O_002     1         CLO       O2     5    -0.544
+
+[  bonds  ]
+;   i     j  type
+1    2    1    ;    Cl-O
+1    3    1    ;    Cl-O
+1    4    1    ;    Cl-O
+1    5    1    ;    Cl-O
+
+[  angles  ]
+;   i     j     k  type
+2    1    3    1    ;    O-Cl-O
+2    1    4    1    ;    O-Cl-O
+2    1    5    1    ;    O-Cl-O
+3    1    4    1    ;    O-Cl-O
+3    1    5    1    ;    O-Cl-O
+4    1    5    1    ;    O-Cl-O
+

@@ -117,6 +117,7 @@ mol_dict = {
     "DEC": "resname DEC and name C2",
     "DME": "resname DME and name C3",
     "PF6": "resname _PF and name P1",
+    "TFSI": "resname TFS and name N1",
     "Li": "resname LIP and name LI", 
 }
 
@@ -130,26 +131,24 @@ try:
 except KeyError:
     raise KeyError(f"Unknown anion_name '{args.anion_name}'. Available: {list(mol_dict)}")
 
-analysis = TrajAnalysis(
+
+Builder(
+    box=args.box,
+    salt=args.anion_name,
+    salt_conc=args.salt_conc,
+    solvents=args.solvents,
+    solvent_fracs=args.solvent_fracs,
     workdir=args.workdir,
-    dt=args.dt,
-    dt_collection=args.dt_collection,
+
+)
+
+MDsim(
+    charge_scale=args.charge_scale,
+    workdir=args.workdir,
+    parallel=args.parallel,
     temperature=args.temperature,
-    cation_name=cation_sel,
-    anion_name=anion_sel,
-    q_eff=args.charge_scale,
+    gmx_exec=args.gromacs_exec,
 )
-
-print("\n===== Calculating activity =====")
-gamma_DH, gamma_B, gamma_DH_B = analysis.activity(
-    run_start = 1500, 
-    run_end = 1550,
-    solv_dir="solvents"
-)
-
-print(f"Results {gamma_DH:.2f}, {gamma_B:.2f}, {gamma_DH_B:.2f}\n")
-
-
 
 """
 analysis = TrajAnalysis(
