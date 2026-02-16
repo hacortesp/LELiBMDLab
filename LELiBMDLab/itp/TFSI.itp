@@ -1,0 +1,103 @@
+[ moleculetype ]
+; Name               nrexcl
+  TFS                  3
+
+[ atoms ]
+;  nr        type    res     resname    atom  cgnr      charge
+    1        N_001     1         TFS       N1     1    -0.66    
+    2        S_001     1         TFS       S1     2     1.02     
+    3        S_001     1         TFS       S1     3     1.02     
+    4        O_001     1         TFS       O1     4    -0.53     
+    5        C_001     1         TFS       C1     5     0.35     
+    6        O_001     1         TFS       O1     6    -0.53    
+    7        O_001     1         TFS       O1     7    -0.53    
+    8        O_001     1         TFS       O1     8    -0.53     
+    9        F_001     1         TFS       F1     9    -0.16     
+   10        F_001     1         TFS       F1    10    -0.16     
+   11        F_001     1         TFS       F1    11    -0.16     
+   12        C_001     1         TFS       C1    12     0.35     
+   13        F_001     1         TFS       F1    13    -0.16     
+   14        F_001     1         TFS       F1    14    -0.16     
+   15        F_001     1         TFS       F1    15    -0.16     
+
+;  F1  F1      F1   F1
+;   \  /        \  /
+;    C1    N1    C1
+;   /  \  /  \  /  \
+; F1   S1     S1    F1
+;     /  \   /  \
+;    O1  O1 O1  O1
+
+[ bonds ]
+;  ai    aj   funct                           
+1    2    1   ;    N-S
+1    3    1   ;    N-S
+2    7    1   ;    S-O
+2    8    1   ;    S-O
+2    12   1   ;    S-C
+3    4    1   ;    S-O
+3    5    1   ;    S-C
+3    6    1   ;    S-O
+5    9    1   ;    C-F
+5    10   1   ;    C-F
+5    11   1   ;    C-F
+12   13   1   ;    C-F
+12   14   1   ;    C-F
+12   15   1   ;    C-F                         
+  
+[angles]
+;  ai    aj   ak  funct                             
+1     2    7     1    ;    N-S-O
+1     2    8     1    ;    N-S-O
+1     2    12    1    ;    N-S-C
+1     3    4     1    ;    N-S-O
+1     3    5     1    ;    N-S-C
+1     3    6     1    ;    N-S-O
+2     12   13    1    ;    S-C-F
+2     12   14    1    ;    S-C-F
+2     12   15    1    ;    S-C-F
+3     1    2     1    ;    S-N-S
+3     5    9     1    ;    S-C-F
+3     5    10    1    ;    S-C-F
+3     5    11    1    ;    S-C-F
+5     3    4     1    ;    C-S-O
+6     3    4     1    ;    O-S-O
+6     3    5     1    ;    O-S-C
+8     2    7     1    ;    O-S-O
+10    5    9     1    ;    F-C-F
+11    5    9     1    ;    F-C-F
+11    5    10    1    ;    F-C-F
+12    2    7     1    ;    C-S-O
+12    2    8     1    ;    C-S-O
+14    12   13    1    ;    F-C-F
+15    12   13    1    ;    F-C-F
+15    12   14    1    ;    F-C-F
+                                
+[ dihedrals ]
+;  ai    aj   ak   al funct                                                      
+1    2    12    13    5    ;    N-S-C-F
+1    2    12    14    5    ;    N-S-C-F
+1    2    12    15    5    ;    N-S-C-F
+1    3    5     9     5    ;    N-S-C-F
+1    3    5     10    5    ;    N-S-C-F
+1    3    5     11    5    ;    N-S-C-F
+2    1    3     4     5    ;    S-N-S-O
+2    1    3     5     5    ;    S-N-S-C
+2    1    3     6     5    ;    S-N-S-O
+3    1    2     7     5    ;    S-N-S-O
+3    1    2     8     5    ;    S-N-S-O
+3    1    2     12    5    ;    S-N-S-C
+4    3    5     9     5    ;    O-S-C-F
+4    3    5     10    5    ;    O-S-C-F
+4    3    5     11    5    ;    O-S-C-F
+6    3    5     9     5    ;    O-S-C-F
+6    3    5     10    5    ;    O-S-C-F
+6    3    5     11    5    ;    O-S-C-F
+7    2    12    13    5    ;    O-S-C-F
+7    2    12    14    5    ;    O-S-C-F
+7    2    12    15    5    ;    O-S-C-F
+8    2    12    13    5    ;    O-S-C-F
+8    2    12    14    5    ;    O-S-C-F
+8    2    12    15    5    ;    O-S-C-F
+
+

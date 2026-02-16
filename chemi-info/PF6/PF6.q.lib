@@ -1,0 +1,25 @@
+*Generated with LigParGen (israel.cabezadevaca@yale.edu)
+
+{PF6}
+[atoms]
+   1   P00       P800         3.1152
+   2   F01       F801        -0.6859
+   3   F02       F802        -0.6859
+   4   F03       F803        -0.6859
+   5   F04       F804        -0.6859
+   6   F05       F805        -0.6859
+   7   F06       F806        -0.6859
+
+[bonds]
+F01       P00       
+F02       P00       
+F03       P00       
+F04       P00       
+F05       P00       
+F06       P00       
+
+[impropers]
+
+[charge_groups]
+P00 F01 F02 F03 F04 F05 F06 
+

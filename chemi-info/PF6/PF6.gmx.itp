@@ -1,0 +1,67 @@
+;---------------------------------------------
+;        Generated with LigParGen 
+;        William L. Jorgensen Lab
+;     Author: israel.cabezadevaca@yale.edu
+;    OPLS Force Field with CM1A derived Atomic Charges
+;---------------------------------------------
+[ defaults ]
+; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ
+    1               3              yes            0.5     0.5
+
+[ atomtypes ]
+  opls_800     P    30.9740     0.000    A    3.74000E-01   8.36800E-01
+  opls_801     F    18.9980     0.000    A    2.90000E-01   2.51040E-01
+  opls_802     F    18.9980     0.000    A    2.90000E-01   2.51040E-01
+  opls_803     F    18.9980     0.000    A    2.90000E-01   2.51040E-01
+  opls_804     F    18.9980     0.000    A    2.90000E-01   2.51040E-01
+  opls_805     F    18.9980     0.000    A    2.90000E-01   2.51040E-01
+  opls_806     F    18.9980     0.000    A    2.90000E-01   2.51040E-01
+
+[ moleculetype ]
+; Name               nrexcl
+  PF6                  3
+
+[ atoms ]
+;   nr       type  resnr residue  atom   cgnr     charge       mass
+     1   opls_800      1    PF6   P00      1     3.1152    30.9740 
+     2   opls_801      1    PF6   F01      1    -0.6859    18.9980 
+     3   opls_802      1    PF6   F02      1    -0.6859    18.9980 
+     4   opls_803      1    PF6   F03      1    -0.6859    18.9980 
+     5   opls_804      1    PF6   F04      1    -0.6859    18.9980 
+     6   opls_805      1    PF6   F05      1    -0.6859    18.9980 
+     7   opls_806      1    PF6   F06      1    -0.6857    18.9980 
+
+[ bonds ]
+;  ai    aj   funct      c0       c1
+    2    1    1      0.1550    256412.256
+    3    1    1      0.1550    256412.256
+    4    1    1      0.1550    256412.256
+    5    1    1      0.1550    256412.256
+    6    1    1      0.1550    256412.256
+    7    1    1      0.1550    256412.256
+
+[angles]
+;  ai    aj   ak  funct      c0       c1 
+    3    1    2    1       108.400    531.954
+    4    1    2    1       108.400    531.954
+    5    1    2    1       108.400    531.954
+    6    1    2    1       108.400    531.954
+    7    1    2    1       108.400    531.954
+    4    1    3    1       108.400    531.954
+    5    1    3    1       108.400    531.954
+    6    1    3    1       108.400    531.954
+    7    1    3    1       108.400    531.954
+    5    1    4    1       108.400    531.954
+    6    1    4    1       108.400    531.954
+    7    1    4    1       108.400    531.954
+    6    1    5    1       108.400    531.954
+    7    1    5    1       108.400    531.954
+    7    1    6    1       108.400    531.954
+[ dihedrals ]
+;  PROPER DIHEDRAL ANGLES
+;  ai    aj   ak   al funct      c0       c1      c2      c3       c4     c5
+[ dihedrals ]
+;IMPROPER DIHEDRAL ANGLES
+;  ai    aj   ak   al funct      c0       c1      c2      c3       c4     c5
+[ pairs ]
+;  ai    aj funct
