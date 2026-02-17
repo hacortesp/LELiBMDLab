@@ -24,7 +24,9 @@ SOLVENT_ITP_MAP = {
 SALT_ANION_ITP_MAP = {
     "PF6": "PF6.itp",
     "TFSI": "TFSI.itp",
-    # "FSI": "FSI.itp",
+    "FSI": "FSI.itp",
+    "BF4": "BF4.itp",
+    "ClO4": "ClO4.itp", 
 }
 
 

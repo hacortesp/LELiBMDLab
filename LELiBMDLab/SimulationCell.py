@@ -43,7 +43,23 @@ SALT_DATA = {
         "Vmol": 358.439218642812,
         "cation_pdb": "Li.pdb",
         "anion_pdb": "TFSI.pdb",
+    },
+    "FSI": {
+        "Vmol": 358.439218642812,
+        "cation_pdb": "Li.pdb",
+        "anion_pdb": "FSI.pdb",
+    },
+    "BF4": {
+        "Vmol": 182.81521655036,
+        "cation_pdb": "Li.pdb",
+        "anion_pdb": "BF4.pdb",
+    },
+    "ClO4": {
+        "Vmol": 77.1461796317142,
+        "cation_pdb": "Li.pdb",
+        "anion_pdb": "ClO4.pdb",
     }
+
 }
 
 

@@ -1,14 +1,14 @@
 [  moleculetype  ]
 ;    name   nrexcl
-CLO4     3
+ClO4     3
 
 [ atoms ]
 ;  nr        type    res     resname    atom  cgnr      charge
-    1        Cl_01     1         CLO       CL     1     1.176
-    2        O_002     1         CLO       O2     2    -0.544
-    3        O_002     1         CLO       O2     3    -0.544
-    4        O_002     1         CLO       O2     4    -0.544
-    5        O_002     1         CLO       O2     5    -0.544
+    1        Cl_01     1         ClO       Cl     1     1.176
+    2        O_002     1         ClO       O2     2    -0.544
+    3        O_002     1         ClO       O2     3    -0.544
+    4        O_002     1         ClO       O2     4    -0.544
+    5        O_002     1         ClO       O2     5    -0.544
 
 [  bonds  ]
 ;   i     j  type
