@@ -17,7 +17,7 @@ Set rlist, assuming 4x4 atom pair-list, to 1.400 nm, buffer size 0.000 nm
 Note that mdrun will redetermine rlist based on the actual pair-list setup
 Calculating fourier grid dimensions for X Y Z
 Using a fourier grid of 36x36x36, spacing 0.111 0.111 0.111
-This run will generate roughly 23 Mb of data
+This run will generate roughly 22 Mb of data
 ===== Simulation cell =====
 40.0 [Å] x 40.0 [Å] x 40.0 [Å]
 V_cell [nm^3]: 64.000
@@ -25,7 +25,7 @@ V_cell [nm^3]: 64.000
 
 
 ===== Salt =====
-TFSI: 39
+FSI: 39
 
 
 
@@ -36,13 +36,13 @@ DMC: 178
 
 
 ===Creating simulation folders...===
-====Packmol input written to: /home/hacortes/Li-EMDLab/test_tfsi/simulation_cell=====
+====Packmol input written to: /home/hacortes/Li-EMDLab/test_fsi/simulation_cell=====
 Running Packmol
 Packmol finished. conf.pdb and packmol.log generated.
 
-Wrote /home/hacortes/Li-EMDLab/test_tfsi/em.mdp
-Wrote /home/hacortes/Li-EMDLab/test_tfsi/npt_eq.mdp
-Wrote /home/hacortes/Li-EMDLab/test_tfsi/nvt_prod.mdp
+Wrote /home/hacortes/Li-EMDLab/test_fsi/em.mdp
+Wrote /home/hacortes/Li-EMDLab/test_fsi/npt_eq.mdp
+Wrote /home/hacortes/Li-EMDLab/test_fsi/nvt_prod.mdp
 
 
 

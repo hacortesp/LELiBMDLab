@@ -118,6 +118,9 @@ mol_dict = {
     "DME": "resname DME and name C3",
     "PF6": "resname _PF and name P1",
     "TFSI": "resname TFS and name N1",
+    "FSI": "resname FSI and name N2",
+    "BF4": "resname _BF and name B1",
+    "ClO4": "resname CLO and name Cl",
     "Li": "resname LIP and name LI", 
 }
 
