@@ -7,8 +7,6 @@ from pathlib import Path
 from typing import List, Dict
 import shutil as _shutil
 
-from sympy import Li
-
 # ============================================================
 # CONSTANTS
 # ============================================================
