@@ -98,24 +98,6 @@ def calc_Ltot(run, cations, anions, start=0, stop=None):
     return msd_fft(np.array(qr))
 
 
-"""
-def calc_Ltot(run, cations, anions, run_start =0):
-    # Split atoms into lists by residue for cations and anions
-    cations_list = cations.atoms.split("residue")
-    anions_list = anions.atoms.split("residue")
-
-    # compute sum over all charges and positions
-    qr = []
-    for _ts in tqdm(run.trajectory[run_start:], desc='Calculating conductivity'):
-        qr_temp = np.zeros(3)
-        for cation in cations_list:
-            qr_temp += cation.center_of_mass() * int(1)
-        for anion in anions_list:
-            qr_temp += anion.center_of_mass() * int(-1)
-        qr.append(qr_temp)
-    return msd_fft(np.array(qr))
-"""    
-
 def compute_all_Lij(cation_positions, anion_positions, times):
     msd_self_cation = calc_Lii_self(cation_positions, times) 
     msd_cation = calc_Lii(cation_positions)
@@ -152,7 +134,7 @@ def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
             continue
 
         slope, intercept = np.polyfit(x, y, 1)
-        
+
         diff = abs(slope - 1)
 
         if diff < min_diff:
@@ -173,8 +155,6 @@ def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
     slope, intercept = np.polyfit(x, y, 1)
 
     return slope, time_range
-
-
 
 # ========================= Output files =========================
 
@@ -355,3 +335,22 @@ def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
     final_slope = (msd_array[int(time_range[1] / dt_)] - msd_array[int(time_range[0] / dt_)]) / (time_range[1] - time_range[0])
     return final_slope, time_range
 """
+
+
+"""
+def calc_Ltot(run, cations, anions, run_start =0):
+    # Split atoms into lists by residue for cations and anions
+    cations_list = cations.atoms.split("residue")
+    anions_list = anions.atoms.split("residue")
+
+    # compute sum over all charges and positions
+    qr = []
+    for _ts in tqdm(run.trajectory[run_start:], desc='Calculating conductivity'):
+        qr_temp = np.zeros(3)
+        for cation in cations_list:
+            qr_temp += cation.center_of_mass() * int(1)
+        for anion in anions_list:
+            qr_temp += anion.center_of_mass() * int(-1)
+        qr.append(qr_temp)
+    return msd_fft(np.array(qr))
+"""  
