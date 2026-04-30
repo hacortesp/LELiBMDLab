@@ -229,9 +229,9 @@ tc-grps                 = System
 tau-t                   = 0.1
 ref-t                   = {self.temp}         
 
-Pcoupl                  = Berendsen
+Pcoupl                  = Parrinello-Rahman
 Pcoupltype              = isotropic
-tau-p                   = 1.0
+tau-p                   = 2.0
 compressibility         = 5e-5
 ref-p                   = 1.0
 
@@ -250,12 +250,12 @@ integrator              = md
 dt                      = 0.002    ; 2 fs
 nsteps                  = 6000000  ;12 ns
 
-nstlog                  = 1000
+nstlog                  = 500 
 nstcalcenergy           = 100
-nstenergy               = 1000
+nstenergy               = 500 
 nstxout                 = 0
 nstvout                 = 0
-nstxout-compressed      = 2000
+nstxout-compressed      = 500 
 compressed-x-precision  = 1000
 
 cutoff-scheme           = Verlet

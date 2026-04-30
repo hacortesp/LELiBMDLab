@@ -8,7 +8,14 @@ eps0_vac = 8.8541878128e-12 # F m^-1
 kB = 1.380649e-23 # J K^-1
 NA = 6.02214076e23 # mol^-1
 AMU_TO_KG = 1.66053906660e-27
-
+ION_FITS = {
+    "resname LIP and name LI": (-515.407, 515.409, 0.000),
+    "resname _BF and name B1": (-248.408, 248.456, 0.012),
+    "resname CLO and name Cl": (-238.867, 239.628, 0.014),
+    "resname FSI and name N2": (-199.503, 201.290, 0.033),
+    "resname _PF and name P1": (-227.982, 232.768, 0.047),
+    "resname TFS and name N1": (-190.692, 206.142, 0.143),
+}
 
 def calc_activity(
     c: float,
@@ -76,18 +83,31 @@ def calc_activity(
     return gamma_DH, gamma_B, gamma_DH_B
 
 
-def born_radius(z_plus, z_minus, eps_solv):
-    delta_g_kj_mol_plus = -509 if z_plus > 0 else -305
-    delta_g_pos = delta_g_kj_mol_plus * 1e3 / NA  # J per particle
+def born_radius(
+    cation_name: str,
+    anion_name: str,
+    z_plus: float,
+    z_minus: float,
+    eps_solv: float,
+):
+    delta_g_pos = delta_g_from_fit(cation_name, eps_solv)
+    delta_g_neg = delta_g_from_fit(anion_name, eps_solv)
 
-    delta_g_kj_mol_minus = -509 if z_minus > 0 else -305
-    delta_g_neg = delta_g_kj_mol_minus * 1e3 / NA  # J per particle
+    prefactor = 8.0 * np.pi * eps0_vac
 
-    R_pos = (z_plus**2 * e**2) / (8.0 * np.pi * eps0_vac * delta_g_pos) * ((1.0 / eps_solv) - 1.0)
-    R_neg = (z_minus**2 * e**2) / (8.0 * np.pi * eps0_vac * delta_g_neg) * ((1.0 / eps_solv) - 1.0)
-    return R_pos , R_neg 
+    R_pos = (z_plus**2 * e**2) / (prefactor * delta_g_pos) * ((1.0 / eps_solv) - 1.0)
+    R_neg = (z_minus**2 * e**2) / (prefactor * delta_g_neg) * ((1.0 / eps_solv) - 1.0)
 
+    return R_pos, R_neg
 
+def delta_g_from_fit(ion_name: str, eps_solv: float) -> float:
+    if ion_name not in ION_FITS:
+        raise ValueError(f"No fit parameters for ion: {ion_name}")
+
+    A, B, C = ION_FITS[ion_name]
+
+    delta_g_kj_mol = A + B / (eps_solv + C)
+    return delta_g_kj_mol * 1e3 / NA  # J per particle
 
 """
 def ion_charge(universe, resname: str, tol: float = 1e-3) -> float:

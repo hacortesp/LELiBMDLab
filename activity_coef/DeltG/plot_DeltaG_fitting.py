@@ -174,9 +174,12 @@ def plot_all(files):
 if __name__ == "__main__":
     plot_all(FILES)
 
+    
+    """
     df = load_data("delta_G_ClO4.csv")
 
     x = df["E_K"].values
     y = df["ΔG_opt (kJ/mol)"].values
     for xi, yi in zip(x, y):
         print(f"{xi:.3f}    {yi:.3f}")
+        """

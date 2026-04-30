@@ -99,7 +99,7 @@ def parse_args():
     parser.add_argument(
         "-dt_collection",
         type=float,
-        default=2000,
+        default=500,
         help="Data collection interval (default: 2000).",
     )
     return parser.parse_args()
@@ -134,7 +134,7 @@ try:
 except KeyError:
     raise KeyError(f"Unknown anion_name '{args.anion_name}'. Available: {list(mol_dict)}")
 
-
+"""
 Builder(
     box=args.box,
     salt=args.anion_name,
@@ -142,7 +142,6 @@ Builder(
     solvents=args.solvents,
     solvent_fracs=args.solvent_fracs,
     workdir=args.workdir,
-
 )
 
 MDsim(
@@ -152,8 +151,8 @@ MDsim(
     temperature=args.temperature,
     gmx_exec=args.gromacs_exec,
 )
-
 """
+
 analysis = TrajAnalysis(
     workdir=args.workdir,
     dt=args.dt,
@@ -164,6 +163,12 @@ analysis = TrajAnalysis(
     q_eff=args.charge_scale,
 )
 
+print("\n===== Calculating conductivity =====")
+mean, err = analysis.conductivity_split()
+print(f"Ionic conductivity = {mean:.4f} ± {err:.4f} mS/cm\n")
+
+
+"""
 print("\n===== Calculating activity =====")
 gamma_DH, gamma_B, gamma_DH_B = analysis.activity(
     run_start = 1500, 
@@ -172,6 +177,7 @@ gamma_DH, gamma_B, gamma_DH_B = analysis.activity(
 )
 
 print(f"Results {gamma_DH:.2f}, {gamma_B:.2f}, {gamma_DH_B:.2f}\n")
+
 
 
 print("\n===== Calculating permittivity =====")
@@ -257,6 +263,9 @@ analysis.ion_cluster_population(
 print("Writing files in ion_association folder")
 
 print("===== Calculating conductivity =====")
+mean, err = analysis.conductivity_split()
+print(f"Ionic conductivity = ({mean:.3e} ± {err:.1e}) mS/cm\n")
+
 cond = analysis.conductivity()
 print(f"Ionic conductivity   = {cond:.6f} mS/cm\n")
 

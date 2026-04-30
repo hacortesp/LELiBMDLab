@@ -1,5 +1,7 @@
 import os
 import math
+from statistics import mean
+from sys import stderr
 import pandas as pd
 import numpy as np
 import MDAnalysis as mda
@@ -66,8 +68,8 @@ class TrajAnalysis:
         self.run_wrap = mda.Universe(tpr_path, wrap_xtc_path)
         self.run_unwrap = mda.Universe(tpr_path, unwrap_xtc_path)
 
-        self.cations_unwrap = self.run_unwrap.select_atoms(cation_name)
-        self.anions_unwrap = self.run_unwrap.select_atoms(anion_name)
+        self.cations_unwrap = self.run_unwrap.select_atoms(cation_name).residues
+        self.anions_unwrap = self.run_unwrap.select_atoms(anion_name).residues
         
         self.volume = self.run_unwrap.coord.volume        
         self.num_cation = len(self.cations_unwrap)
@@ -77,17 +79,140 @@ class TrajAnalysis:
 
         print("===== Electrolyte information =====")
         print(f"Work directory: {self.workdir}")
+
         V_m3 = self.volume * 1e-30
-        m_sol_kg = self.run_wrap.atoms.masses.sum() * AMU_TO_KG
-        rho_kg_m3 = m_sol_kg / V_m3  #kg·m^⁻3
+
+        # total mass
+        m_total_kg = self.run_wrap.atoms.masses.sum() * AMU_TO_KG
+
+        # ion mass (cation + anion)
+        m_ion_kg = (
+            self.cations_unwrap.masses.sum() +
+            self.anions_unwrap.masses.sum()
+        ) * AMU_TO_KG
+        # solvent mass (what molality needs)
+        m_solvent_kg = m_total_kg - m_ion_kg
+  
+        rho_kg_m3 = m_total_kg / V_m3
         rho_g_cm3 = rho_kg_m3 * 1e-3
         print(f"Density: {rho_g_cm3:.4f} g·cm^-3")
 
         vsol_L = self.volume * 1e-27
-        c_m = self.num_cation / NA / vsol_L
+
+        n_cation = self.num_cation / NA
+
+        # molarity
+        c_m = n_cation / vsol_L
         print(f"Concentration: {c_m:.2f} mol L^-1")
 
+        # molality (correct)
+        b_m = n_cation / m_solvent_kg
+        print(f"Molality: {b_m:.2f} mol kg^-1")
+
 # ========================= conductivity =========================
+    def conductivity_split(self, window_ps: float = 4000):
+        ps_per_frame = self.dt * self.dt_collection
+        frames_per_window = int(window_ps / ps_per_frame)
+        total_windows = self.num_frames // frames_per_window
+
+        if total_windows < 1:
+            raise ValueError("Trajectory too short")
+
+        sigma_values = []
+
+        for i in range(total_windows):
+            start = i * frames_per_window
+            stop = start + frames_per_window
+            idx = i + 1 
+
+            times = np.arange(
+                0,
+                frames_per_window * ps_per_frame,
+                ps_per_frame,
+                dtype=float
+            )
+            msd_sigma = calc_Ltot(
+                self.run_unwrap,
+                self.cations_unwrap,
+                self.anions_unwrap,
+                start=start,
+                stop=stop
+            )
+            
+            slope, time_ranges = calc_slope_msd(
+                times,
+                msd_sigma,
+                ps_per_frame,
+                interval_time=100,
+                step_size=4,
+            )
+
+            sigma_val = self.calc_conductivity(
+                slope,
+                self.volume,
+                self.temp,
+                self.q_eff
+            )
+            
+            # save per-window outputs
+            write_msd_sigma(times, msd_sigma, self.workdir, suffix=idx)
+            preview_msd_sigma(times, msd_sigma, time_ranges, self.workdir, suffix=idx)
+            sigma_values.append(sigma_val)
+        
+        values = np.array(sigma_values, dtype=float)
+
+        # --- full trajectory calculation ---
+        times_full = np.arange(
+            0,
+            self.num_frames * ps_per_frame,
+            ps_per_frame,
+            dtype=float
+        )
+
+        msd_sigma_full = calc_Ltot(
+            self.run_unwrap,
+            self.cations_unwrap,
+            self.anions_unwrap,
+            start=0,
+            stop=self.num_frames
+        )
+
+        slope_full, time_ranges_full = calc_slope_msd(
+            times_full,
+            msd_sigma_full,
+            ps_per_frame,
+            interval_time=100,
+            step_size=4,
+        )
+
+        sigma_full = self.calc_conductivity(
+            slope_full,
+            self.volume,
+            self.temp,
+            self.q_eff
+        )
+
+        write_msd_sigma(times_full, msd_sigma_full, self.workdir, suffix="full")
+        preview_msd_sigma(times_full, msd_sigma_full, time_ranges_full, self.workdir, suffix="full")
+
+        # --- stats ---
+        values = np.array(sigma_values, dtype=float)
+
+        if values.size < 2:
+            raise ValueError("Need at least two values to estimate error")
+
+        mean = np.mean(values)
+        std = np.std(values, ddof=1)
+        stderr = std / np.sqrt(values.size)
+
+        print("\n--- summary ---")
+        print(f"full trajectory sigma = {sigma_full:.4f}")
+        print(f"values = {values}")
+        print(f"mean   = {mean:.6e}")
+        print(f"stderr = {stderr:.6e}")
+
+        return mean, stderr
+    
     def conductivity(self): 
         self.times = np.arange(0, self.run_end* self.dt, self.dt * self.dt_collection, dtype=float)
 
@@ -95,10 +220,9 @@ class TrajAnalysis:
         slope, time_ranges = calc_slope_msd(
             self.times,
             msd_sigma,
-            self.dt_collection,
-            self.dt,
-            interval_time=1200,
-            step_size=10,
+            self.dt_collection*self.dt,
+            interval_time=100,
+            step_size=4,
             )
         sigma_val = self.calc_conductivity(slope, self.volume, self.temp, self.q_eff)
         write_msd_sigma(self.times, msd_sigma, self.workdir)
@@ -184,8 +308,8 @@ class TrajAnalysis:
             calc_Lii(cations_positions),
             self.dt_collection,
             self.dt,
-            interval_time=1200,
-            step_size=10,
+            interval_time=100,
+            step_size=4,
             )
         
         slope_minusminus, time_range_minusminus = calc_slope_msd(
@@ -193,8 +317,8 @@ class TrajAnalysis:
             calc_Lii(anions_positions),
             self.dt_collection,
             self.dt,
-            interval_time=1200,
-            step_size=10,
+            interval_time=100,
+            step_size=4,
             )
 
         return self.calc_transfer_number(
@@ -363,6 +487,12 @@ class TrajAnalysis:
         run_end: int,
         solv_dir: str
     ):
+        if solv_dir is None:
+            raise ValueError("solv_dir must be provided")
+        
+        if os.path.abspath(solv_dir) == os.path.abspath(self.workdir):
+            raise ValueError("solv_dir must be different from self.workdir")
+
         SELECTION_TO_ION = {
         "resname LIP and name LI": 0.60,
         "resname _PF and name P1": 2.42,
@@ -408,7 +538,7 @@ class TrajAnalysis:
 
         c = n_salt / m_solv_kg        
        
-        Rb_plus, Rb_minus = born_radius(z_plus, z_minus, eps_solv)
+        Rb_plus, Rb_minus = born_radius(self.cation_name, self.anion_name, z_plus, z_minus, eps_solv)
         
         gamma_DH, gamma_B, gamma_DH_B = calc_activity(
             c,
@@ -448,10 +578,16 @@ class TrajAnalysis:
         else:
             solv_tpr_path = os.path.join(trajdir, "nvt_prod_wrap.tpr")
             solv_xtc_path = os.path.join(trajdir, "nvt_prod_wrap.xtc")
+
             if not os.path.isfile(solv_tpr_path):
-                raise FileNotFoundError(solv_tpr_path)
+                raise FileNotFoundError(
+                    f"nvt_prod_wrap.tpr not found in folder: {trajdir}"
+                )
+
             if not os.path.isfile(solv_xtc_path):
-                raise FileNotFoundError(solv_xtc_path)
+                raise FileNotFoundError(
+                    f"nvt_prod_wrap.xtc not found in folder: {trajdir}"
+                )
 
             run_wrap = mda.Universe(solv_tpr_path, solv_xtc_path)
 

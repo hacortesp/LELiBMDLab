@@ -5,7 +5,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
-from scipy import stats
+from scipy.stats import linregress
 
 
 
@@ -68,6 +68,37 @@ def calc_Lij(cation_positions, anion_positions):
     msd = msd_fft_cross(np.array(r_cat),np.array(r_an))
     return np.array(msd)
 
+def calc_Ltot(run, cations, anions, start=0, stop=None):
+    """
+    Compute total MSD for conductivity using a trajectory slice.
+    """
+
+    traj = run.trajectory
+
+    if stop is None:
+        stop = traj.n_frames
+
+    # Pre-split once (important for performance)
+    cations_list = cations.atoms.split("residue")
+    anions_list = anions.atoms.split("residue")
+
+    qr = []
+
+    for _ts in tqdm(traj[start:stop], desc="Calculating conductivity"):
+        qr_temp = np.zeros(3)
+
+        for cation in cations_list:
+            qr_temp += cation.center_of_mass() * 1
+
+        for anion in anions_list:
+            qr_temp += anion.center_of_mass() * -1
+
+        qr.append(qr_temp)
+
+    return msd_fft(np.array(qr))
+
+
+"""
 def calc_Ltot(run, cations, anions, run_start =0):
     # Split atoms into lists by residue for cations and anions
     cations_list = cations.atoms.split("residue")
@@ -83,7 +114,7 @@ def calc_Ltot(run, cations, anions, run_start =0):
             qr_temp += anion.center_of_mass() * int(-1)
         qr.append(qr_temp)
     return msd_fft(np.array(qr))
-    
+"""    
 
 def compute_all_Lij(cation_positions, anion_positions, times):
     msd_self_cation = calc_Lii_self(cation_positions, times) 
@@ -93,42 +124,65 @@ def compute_all_Lij(cation_positions, anion_positions, times):
     msd_distinct_CatAn = calc_Lij(cation_positions, anion_positions)    
     return [msd_cation, msd_self_cation, msd_anion, msd_self_anion, msd_distinct_CatAn]
 
-
-def calc_slope_msd(times_array, msd_array, dt_collection, dt, interval_time, step_size):
-    # Log transformation
+def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
     log_time = np.log(times_array[1:])
     log_msd = np.log(msd_array[1:])
 
-    # calculate the time interval
-    dt_ = dt_collection * dt
     interval_msd = int(interval_time / dt_)
+    min_time = 10
+    max_time = 1000
 
-    # Initialize a list to store the average slope for each large interval
     time_range = (None, None)
-    min_slope_sum = float('inf')
+    min_diff = float('inf')
+    best_slope = None
 
-    # Use a sliding window to calculate the average slope for each large interval
     for i in range(0, len(log_time) - interval_msd, step_size):
-        if i + interval_msd > len(log_time):  # Ensure not to go out of bounds
+        if i + interval_msd > len(log_time):
             break
-        local_slope = np.gradient(log_msd[i:i + interval_msd], log_time[i:i + interval_msd])
-        slope_difference_sum = np.sum(np.abs(local_slope - 1))
-        if slope_difference_sum < min_slope_sum:
-            min_slope_sum = slope_difference_sum
+
+        window_start = times_array[i]
+        window_end = times_array[i + interval_msd]
+        if window_start < min_time or window_end > max_time:
+            continue
+
+        x = log_time[i:i + interval_msd]
+        y = log_msd[i:i + interval_msd]
+
+        if len(x) < 2:
+            continue
+
+        slope, intercept = np.polyfit(x, y, 1)
+        
+        diff = abs(slope - 1)
+
+        if diff < min_diff:
+            min_diff = diff
+            best_slope = slope
             time_range = (times_array[i], times_array[i + interval_msd])
 
-    # Calculate the final slope
-    final_slope = (msd_array[int(time_range[1] / dt_)] - msd_array[int(time_range[0] / dt_)]) / (time_range[1] - time_range[0])
+    # --- Linear regression instead of simple slope ---
+    start_idx = int(time_range[0] / dt_)
+    end_idx = int(time_range[1] / dt_)
 
-    return final_slope, time_range
+    x = times_array[start_idx:end_idx]
+    y = msd_array[start_idx:end_idx]
+
+    if len(x) < 2:
+        raise ValueError("Not enough points for regression")
+    print(f"time range for regression: {time_range[0]:.2f} ps to {time_range[1]:.2f} ps slope = {best_slope:.4f}")
+    slope, intercept = np.polyfit(x, y, 1)
+
+    return slope, time_range
+
+
 
 # ========================= Output files =========================
 
-def write_msd_sigma(times_ps, msd_sigma, output_dir):
+def write_msd_sigma(times_ps, msd_sigma, output_dir, suffix: int):
     msd_dir = os.path.join(output_dir, "msd_sigma_file")
     os.makedirs(msd_dir, exist_ok=True)
 
-    path = os.path.join(msd_dir, "msd_sigma.csv")
+    path = os.path.join(msd_dir, f"msd_sigma_{suffix}.csv")
 
     np.savetxt(
         path,
@@ -166,7 +220,7 @@ def preview_plot_msd(
     font = {"title": 18, "label": 16, "tick": 12}
     colors = ["#3C3846", "#DF543F", "#2286A9", "#FBBF7C"]
 
-    dt_collection = 2000
+    dt_collection = 500
     dt = 0.002
     dt_ = dt_collection * dt
 
@@ -196,21 +250,36 @@ def preview_plot_msd(
     ax.set_xlim(1e2,)
     ax.grid(True, linestyle="--")
 
-    ax.tick_params(axis="both", which="both", direction="in", labelsize=font["tick"])
+    # larger ticks (key change)
+    ax.tick_params(
+        axis="both",
+        which="major",
+        direction="in",
+        labelsize=font["tick"],
+        length=7,
+        width=1.2,
+    )
+    ax.tick_params(
+        axis="both",
+        which="minor",
+        direction="in",
+        length=4,
+        width=1.0,
+    )
 
     plt.tight_layout()
     fig.savefig(fname, dpi=160)
     plt.close(fig)
 
 
-def preview_msd_sigma(times_ps, msd_sigma, time_ranges, output_dir):
+def preview_msd_sigma(times_ps, msd_sigma, time_ranges, output_dir, suffix: int):
     msd_dir = os.path.join(output_dir, "msd_sigma_file")
     os.makedirs(msd_dir, exist_ok=True)
 
     preview_plot_msd(
         msd_data=msd_sigma,
         times=times_ps,
-        fname=os.path.join(msd_dir, "msd_sigma_preview.png"),
+        fname=os.path.join(msd_dir, f"msd_sigma_preview_{suffix}.png"),
         title=r"MSD $L^{tot} = L^{++}+L^{--}-2\times L^{+-}$",
         ylabel=r"MSD ($\mathrm{\AA}^2/ps$)",
         time_ranges=time_ranges,
@@ -248,3 +317,41 @@ def positions_array(run, atoms, times):
         time += 1
 
     return atoms_positions  
+
+
+
+"""
+def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
+    # Log transformation
+    log_time = np.log(times_array[1:])
+    log_msd = np.log(msd_array[1:])
+
+    # calculate the time interval
+    interval_msd = int(interval_time / dt_)
+
+    max_time = 2000  # ps
+
+    # Initialize a list to store the average slope for each large interval
+    time_range = (None, None)
+    min_slope_sum = float('inf')
+
+    # Use a sliding window to calculate the average slope for each large interval
+    for i in range(0, len(log_time) - interval_msd, step_size):
+        if i + interval_msd > len(log_time):  # Ensure not to go out of bounds
+            break
+
+        window_end = times_array[i + interval_msd]
+        
+        if window_end > max_time:
+            continue
+
+        local_slope = np.gradient(log_msd[i:i + interval_msd], log_time[i:i + interval_msd])
+        slope_difference_sum = np.sum(np.abs(local_slope - 1))
+        if slope_difference_sum < min_slope_sum:
+            min_slope_sum = slope_difference_sum            
+            time_range = (times_array[i], times_array[i + interval_msd])
+
+    # Calculate the final slope
+    final_slope = (msd_array[int(time_range[1] / dt_)] - msd_array[int(time_range[0] / dt_)]) / (time_range[1] - time_range[0])
+    return final_slope, time_range
+"""
