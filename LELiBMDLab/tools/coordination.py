@@ -334,7 +334,7 @@ def calc_population_parallel(
             cations = run.select_atoms(select_cations)
             anions = run.select_atoms(select_anions)
 
-            # ✅ COPY DATA — CRITICAL
+            # COPY DATA — CRITICAL
             positions = (cations + anions).positions.copy()
             box = run.trajectory.ts.dimensions[:3].copy()
             types = (cations + anions).types.copy()

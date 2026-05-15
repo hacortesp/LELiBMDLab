@@ -8,10 +8,11 @@ eps0_vac = 8.8541878128e-12 # F m^-1
 kB = 1.380649e-23 # J K^-1
 NA = 6.02214076e23 # mol^-1
 AMU_TO_KG = 1.66053906660e-27
+
 ION_FITS = {
     "resname LIP and name LI": (-515.407, 515.409, 0.000),
     "resname _BF and name B1": (-248.408, 248.456, 0.012),
-    "resname CLO and name Cl": (-238.867, 239.628, 0.014),
+    "resname ClO and name Cl": (-238.867, 239.628, 0.014),
     "resname FSI and name N2": (-199.503, 201.290, 0.033),
     "resname _PF and name P1": (-227.982, 232.768, 0.047),
     "resname TFS and name N1": (-190.692, 206.142, 0.143),
@@ -86,17 +87,32 @@ def calc_activity(
 def born_radius(
     cation_name: str,
     anion_name: str,
-    z_plus: float,
-    z_minus: float,
     eps_solv: float,
 ):
-    delta_g_pos = delta_g_from_fit(cation_name, eps_solv)
-    delta_g_neg = delta_g_from_fit(anion_name, eps_solv)
+    delta_g_pos_kjmol = delta_g_from_fit(cation_name, eps_solv)
+    delta_g_neg_kjmol = delta_g_from_fit(anion_name, eps_solv)
+
+    print(f"delta_g_pos = {delta_g_pos_kjmol:.4f} kJ/mol")
+    print(f"delta_g_neg = {delta_g_neg_kjmol:.4f} kJ/mol")
+
+    # kJ/mol -> J per ion
+    delta_g_pos = delta_g_pos_kjmol * 1000.0 / NA
+    delta_g_neg = delta_g_neg_kjmol * 1000.0 / NA
 
     prefactor = 8.0 * np.pi * eps0_vac
 
-    R_pos = (z_plus**2 * e**2) / (prefactor * delta_g_pos) * ((1.0 / eps_solv) - 1.0)
-    R_neg = (z_minus**2 * e**2) / (prefactor * delta_g_neg) * ((1.0 / eps_solv) - 1.0)
+    z_plus = 1; z_minus = -1
+    R_pos = (
+        (z_plus**2 * e**2)
+        / (prefactor * delta_g_pos)
+        * ((1.0 / eps_solv) - 1.0)
+    )
+
+    R_neg = (
+        (z_minus**2 * e**2)
+        / (prefactor * delta_g_neg)
+        * ((1.0 / eps_solv) - 1.0)
+    )
 
     return R_pos, R_neg
 
@@ -107,33 +123,5 @@ def delta_g_from_fit(ion_name: str, eps_solv: float) -> float:
     A, B, C = ION_FITS[ion_name]
 
     delta_g_kj_mol = A + B / (eps_solv + C)
-    return delta_g_kj_mol * 1e3 / NA  # J per particle
+    return delta_g_kj_mol 
 
-"""
-def ion_charge(universe, resname: str, tol: float = 1e-3) -> float:
-    ag = universe.select_atoms(resname)
-
-    if ag.n_atoms == 0:
-        raise ValueError(f"No atoms found for selection: {resname}")
-
-    # group by residue → one ion per residue
-    charges = []
-    for res in ag.residues:
-        q = res.atoms.charges.sum()
-        charges.append(q)
-
-    charges = np.array(charges)
-    q_mean = charges.mean()
-
-    if np.std(charges) > tol:
-        raise ValueError(
-            f"Non-uniform charges detected for {resname}: {charges}"
-        )
-
-    if abs(q_mean - round(q_mean)) > tol:
-        raise ValueError(
-            f"Ionic charge for {resname} not integer: {q_mean}"
-        )
-
-    return float(round(q_mean))
-"""

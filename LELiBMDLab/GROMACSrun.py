@@ -19,6 +19,8 @@ class GROMACSrun:
         gmx_exec: str = "gmx",
         gmx_mpi_exec: str = "gmx_mpi",
         ntasks_env: str = "SLURM_NTASKS",
+        steps : int,
+        time_step_ps : float        
     ) -> None:
         self.workdir = Path(workdir)
         self.workdir.mkdir(parents=True, exist_ok=True)
@@ -28,6 +30,9 @@ class GROMACSrun:
         self.gmx_exec = gmx_exec
         self.gmx_mpi_exec = gmx_mpi_exec
         self.ntasks_env = ntasks_env
+
+        self.nvt_steps = steps
+        self.nvt_ts = time_step_ps
 
     # ========================================================
     # Public API
@@ -247,8 +252,8 @@ continuation            = no
             "nvt_prod.mdp",
             f"""\
 integrator              = md
-dt                      = 0.002    ; 2 fs
-nsteps                  = 6000000  ;12 ns
+dt                      = {self.nvt_ts}    ; 2 fs
+nsteps                  = {self.nvt_steps} 
 
 nstlog                  = 500 
 nstcalcenergy           = 100

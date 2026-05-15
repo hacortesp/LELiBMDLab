@@ -41,6 +41,9 @@ class MDsim:
         parallel: bool = False,
         gmx_exec: str = "gmx",
         gmx_mpi_exec: str = "gmx_mpi",
+        nvt_time_ps: float = 30000,
+        time_step_ps: float = 0.002
+
 
     ) -> None:
         self.charge_scale = charge_scale
@@ -51,7 +54,9 @@ class MDsim:
         self.gmx_exec = gmx_exec
         self.gmx_mpi_exec = gmx_mpi_exec
 
-        
+        self.time_step_ps = time_step_ps
+        self.steps = int(nvt_time_ps / self.time_step_ps)
+
         self.asset_dir = Path(__file__).resolve().parent
         self.base_dir = Path.cwd()
         self.sim_dir = self.base_dir / self.workdir
@@ -79,6 +84,8 @@ class MDsim:
             parallel=self.parallel,
             gmx_exec=self.gmx_exec,
             gmx_mpi_exec=self.gmx_mpi_exec,
+            steps=self.steps,
+            time_step_ps =self.time_step_ps
         )
 
         gmx.write_all()

@@ -51,67 +51,130 @@ def msd_fft_cross(r, k):
         S1[m] = Q / (N-m)
     return S1 - S2 - S3
 
-def msd_variance_cross(r1, r2, msd):
 
-    # compute A1, recursive relation with D = r1^2 r2^2
-    N = len(r1)
-    D = np.square(r1)*np.square(r2)
+"""
+# ---------- FFT MSD (1D) ----------
+def autocorr_fft(x: np.ndarray) -> np.ndarray:
+    N = len(x)
+    F = np.fft.fft(x, n=2 * N)
+    PSD = F * F.conjugate()
+    res = np.fft.ifft(PSD).real[:N]
+    n = N - np.arange(N)
+    return res / n
+
+
+def msd_fft_1d(r: np.ndarray) -> np.ndarray:
+    N = len(r)
+    D = r * r
     D = np.append(D, 0)
+    S2 = autocorr_fft(r)
+
     Q = 2 * D.sum()
-    A1 = np.zeros(N)
+    S1 = np.zeros(N)
+
     for m in range(N):
         Q = Q - D[m - 1] - D[N - m]
-        A1[m] = Q / (N - m)
+        S1[m] = Q / (N - m)
 
-    # compute A2, cross correlation of r1^2r2 and r2
-    A2 = cross_corr(np.square(r1)*r2, r2)
+    return S1 - 2 * S2
 
-    # compute A3, cross correlation of r1^2 and r2^2
-    A3 = cross_corr(np.square(r1), np.square(r2))
 
-    # compute A4, cross correlation of (r1r2^2) and r1
-    A4 = cross_corr(r1*np.square(r2), r1)
+# ---------- Variance ----------
+def cross_corr(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    N = len(x)
+    F1 = np.fft.fft(x, n=2 * N)
+    F2 = np.fft.fft(y, n=2 * N)
+    PSD = F1 * F2.conjugate()
+    res = np.fft.ifft(PSD).real[:N]
+    n = N - np.arange(N)
+    return res / n
 
-    # compute A5, cross correlation of r1r2 and r1r2
-    A5 = cross_corr(r1*r2, r1*r2)
 
-    # compute A6, cross correlation of r1 and r1r2^2
-    A6 = cross_corr(r1, np.square(r2)*r1)
-
-    # compute A7, cross correlation of r2^2 and r1^2
-    A7 = cross_corr(np.square(r2), np.square(r1))
-
-    # compute A8, cross correlation of r2 and r1^2r2
-    A8 = cross_corr(r2, np.square(r1)*r2)    
-
-    var_x = A1 - 2*A2 + A3 - 2*A4 +4*A5 - 2*A6 + A7 - 2*A8 - msd**2
-    n_minus_m = N * np.ones(N) - np.arange(0, N)   # divide by (N-m)^2 (Var[E[X]] = Var[X]/n)
-
-    return var_x/n_minus_m
-
-def msd_variance(r, msd):
-
-    # compute A1, recursive relation with D = r^4
+def msd_variance(r: np.ndarray, msd: np.ndarray) -> np.ndarray:
     N = len(r)
+
     D = r**4
     D = np.append(D, 0)
     Q = 2 * D.sum()
     A1 = np.zeros(N)
+
     for m in range(N):
         Q = Q - D[m - 1] - D[N - m]
         A1[m] = Q / (N - m)
 
-    # compute A2, autocorrelation of r^2
     A2 = cross_corr(r**2, r**2)
-
-    # compute A3 and A4, cross correlations of r and r^3
     A3 = cross_corr(r, r**3)
     A4 = cross_corr(r**3, r)
 
-    var_x = A1 + 6*A2 - 4*A3 - 4*A4 - msd**2
-    n_minus_m = N * np.ones(N) - np.arange(0, N)   # divide by (N-m)^2 (Var[E[X]] = Var[X]/n)
+    var = A1 + 6 * A2 - 4 * A3 - 4 * A4 - msd**2
+    n_minus_m = N - np.arange(N)
 
-    return var_x/n_minus_m
+    return var / n_minus_m
+
+def average_directions(msd, dirs='xyz'):
+    if dirs=='xyz':
+        msd_all = (
+            msd[:, 0] + msd[:, 1] + msd[:, 2]
+        ) / 3
+    elif dirs=='xy':
+        msd_all = (
+            msd[:, 0] + msd[:, 1]
+        ) / 2
+    elif dirs=='z':
+        msd_all = msd[:, 2]
+    else:
+        raise ValueError("dirs must be 'xyz', 'xy', or 'z' (others not yet implemented)")
+    return msd_all
+
+
+# ---------- MAIN FUNCTION ----------
+def calc_Ltot(run, cations, anions, start=0, stop=None, dirs='xyz', save_path=None):
+    traj = run.trajectory
+    atoms_all = run.select_atoms("all")
+
+    if stop is None:
+        stop = traj.n_frames
+
+    cations_list = cations.atoms.split("residue")
+    anions_list = anions.atoms.split("residue")
+
+    qr = []
+
+    for _ts in tqdm(traj[start:stop], desc="Calculating conductivity"):
+        com = atoms_all.center_of_mass(wrap=False)
+
+        qr_temp = np.zeros(3)
+
+        for cation in cations_list:
+            qr_temp += (cation.center_of_mass() - com)
+
+        for anion in anions_list:
+            qr_temp -= (anion.center_of_mass() - com)
+
+        qr.append(qr_temp)
+
+    qr = np.array(qr)  # (N, 3)
+
+    # --- MATCH ORIGINAL IMPLEMENTATION ---
+    msd = np.array([msd_fft_1d(qr[:, i]) for i in range(3)])        # (3, N)
+    msd_var = np.array([msd_variance(qr[:, i], msd[i]) for i in range(3)])  # (3, N)
+
+    if save_path:
+        os.makedirs(save_path, exist_ok=True)
+        np.save(f"{save_path}/msd_xyz.npy", msd)
+        np.save(f"{save_path}/msd_var_xyz.npy", msd_var)
+
+    msd = average_directions(np.transpose(msd), dirs)              # (N,)
+    msd_var = average_directions(np.transpose(msd_var), dirs)      # (N,)
+
+    if save_path:
+        os.makedirs(save_path, exist_ok=True)
+        np.save(f"{save_path}/msd_avg.npy", msd)
+        np.save(f"{save_path}/msd_var_avg.npy", msd_var)
+
+    return msd
+"""
+
 
 # ========================= L_ij building blocks (conductivity branch) =========================
 def calc_Lii_self(atom_positions, times):
@@ -130,33 +193,34 @@ def calc_Lij(cation_positions, anion_positions):
     msd = msd_fft_cross(np.array(r_cat),np.array(r_an))
     return np.array(msd)
 
+
 def calc_Ltot(run, cations, anions, start=0, stop=None):
-    """
-    Compute total MSD for conductivity using a trajectory slice.
-    """
 
     traj = run.trajectory
-
+    atoms_all = run.select_atoms("all")
     if stop is None:
         stop = traj.n_frames
 
     # Pre-split once (important for performance)
+    
     cations_list = cations.atoms.split("residue")
     anions_list = anions.atoms.split("residue")
 
     qr = []
 
-    for _ts in tqdm(traj[start:stop], desc="Calculating conductivity"):
+    for _ts in tqdm(traj[start:stop], desc="Calculating Onsager coefficients"):
+        com = atoms_all.center_of_mass()
+
         qr_temp = np.zeros(3)
 
         for cation in cations_list:
-            qr_temp += cation.center_of_mass() * 1
+            qr_temp += (cation.center_of_mass() - com) * 1
 
         for anion in anions_list:
-            qr_temp += anion.center_of_mass() * -1
+            qr_temp += (anion.center_of_mass() - com) * -1
 
         qr.append(qr_temp)
-
+    
     return msd_fft(np.array(qr))
 
 
@@ -168,7 +232,34 @@ def compute_all_Lij(cation_positions, anion_positions, times):
     msd_distinct_CatAn = calc_Lij(cation_positions, anion_positions)    
     return [msd_cation, msd_self_cation, msd_anion, msd_self_anion, msd_distinct_CatAn]
 
-def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
+
+def calc_slope_msd(
+    times_array,
+    msd_array,
+    dt_,
+    interval_time,
+    step_size,
+    forced_time_range=None
+):
+
+    # --- CASE 1: forced window ---
+    if forced_time_range is not None:
+        t_start, t_end = forced_time_range
+
+        start_idx = np.searchsorted(times_array, t_start)
+        end_idx = np.searchsorted(times_array, t_end)
+
+        x = times_array[start_idx:end_idx]
+        y = msd_array[start_idx:end_idx]
+        
+        if len(x) < 2:
+            raise ValueError("Not enough points for regression")
+
+        slope, _ = np.polyfit(x, y, 1)
+
+        return slope, forced_time_range
+
+    # --- CASE 2: automatic window (original behavior) ---
     log_time = np.log(times_array[1:])
     log_msd = np.log(msd_array[1:])
 
@@ -181,11 +272,10 @@ def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
     best_slope = None
 
     for i in range(0, len(log_time) - interval_msd, step_size):
-        if i + interval_msd > len(log_time):
-            break
 
         window_start = times_array[i]
         window_end = times_array[i + interval_msd]
+
         if window_start < min_time or window_end > max_time:
             continue
 
@@ -195,28 +285,29 @@ def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
         if len(x) < 2:
             continue
 
-        slope, intercept = np.polyfit(x, y, 1)
+        slope, _ = np.polyfit(x, y, 1)
 
         diff = abs(slope - 1)
 
         if diff < min_diff:
             min_diff = diff
             best_slope = slope
-            time_range = (times_array[i], times_array[i + interval_msd])
+            time_range = (window_start, window_end)
 
-    # --- Linear regression instead of simple slope ---
+    if time_range[0] is None:
+        raise ValueError("No valid diffusive region found")
+
+    # --- final linear fit ---
     start_idx = int(time_range[0] / dt_)
     end_idx = int(time_range[1] / dt_)
 
     x = times_array[start_idx:end_idx]
     y = msd_array[start_idx:end_idx]
 
-    if len(x) < 2:
-        raise ValueError("Not enough points for regression")
-    print(f"time range for regression: {time_range[0]:.2f} ps to {time_range[1]:.2f} ps slope = {best_slope:.4f}")
-    slope, intercept = np.polyfit(x, y, 1)
-
+    slope, _ = np.polyfit(x, y, 1)
+    
     return slope, time_range
+
 
 # ========================= Output files =========================
 
@@ -345,74 +436,19 @@ def preview_msd_diff(times_ps, msd_self, time_ranges, output_dir, key):
 
 # ========================= transformations =========================
 
-def positions_array(run, atoms, times):
-    run_start = 0
-    time = 0
+def positions_array(run, atoms, n_frames):
     atoms_list = atoms.atoms.split("residue")
-    atoms_positions = np.zeros((times, len(atoms_list), 3))
-    
-    for ts in enumerate(run.trajectory[int(run_start):]):
-        system_com = run.atoms.center_of_mass(wrap=True)
-        for index, ion in enumerate(atoms_list):
-            atoms_positions[time, index, :] = ion.center_of_mass() - system_com
-        
-        time += 1
+    atoms_all = run.select_atoms("all")
 
-    return atoms_positions  
+    n_atoms = len(atoms_list)
+    positions = np.zeros((n_frames, n_atoms, 3))
 
+    for t, ts in enumerate(run.trajectory[:n_frames]):
+        com = atoms_all.center_of_mass(wrap=False)
 
+        for i, ion in enumerate(atoms_list):
+            positions[t, i, :] = ion.center_of_mass() - com
 
-"""
-def calc_slope_msd(times_array, msd_array, dt_, interval_time, step_size):
-    # Log transformation
-    log_time = np.log(times_array[1:])
-    log_msd = np.log(msd_array[1:])
-
-    # calculate the time interval
-    interval_msd = int(interval_time / dt_)
-
-    max_time = 2000  # ps
-
-    # Initialize a list to store the average slope for each large interval
-    time_range = (None, None)
-    min_slope_sum = float('inf')
-
-    # Use a sliding window to calculate the average slope for each large interval
-    for i in range(0, len(log_time) - interval_msd, step_size):
-        if i + interval_msd > len(log_time):  # Ensure not to go out of bounds
-            break
-
-        window_end = times_array[i + interval_msd]
-        
-        if window_end > max_time:
-            continue
-
-        local_slope = np.gradient(log_msd[i:i + interval_msd], log_time[i:i + interval_msd])
-        slope_difference_sum = np.sum(np.abs(local_slope - 1))
-        if slope_difference_sum < min_slope_sum:
-            min_slope_sum = slope_difference_sum            
-            time_range = (times_array[i], times_array[i + interval_msd])
-
-    # Calculate the final slope
-    final_slope = (msd_array[int(time_range[1] / dt_)] - msd_array[int(time_range[0] / dt_)]) / (time_range[1] - time_range[0])
-    return final_slope, time_range
-"""
+    return positions
 
 
-"""
-def calc_Ltot(run, cations, anions, run_start =0):
-    # Split atoms into lists by residue for cations and anions
-    cations_list = cations.atoms.split("residue")
-    anions_list = anions.atoms.split("residue")
-
-    # compute sum over all charges and positions
-    qr = []
-    for _ts in tqdm(run.trajectory[run_start:], desc='Calculating conductivity'):
-        qr_temp = np.zeros(3)
-        for cation in cations_list:
-            qr_temp += cation.center_of_mass() * int(1)
-        for anion in anions_list:
-            qr_temp += anion.center_of_mass() * int(-1)
-        qr.append(qr_temp)
-    return msd_fft(np.array(qr))
-"""  
