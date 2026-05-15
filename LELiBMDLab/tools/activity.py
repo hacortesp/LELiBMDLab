@@ -1,13 +1,6 @@
 import numpy as np
+import LELiBMDLab.tools.constants as const
 
-# ============================================================
-# Physical constants (SI)
-# ============================================================
-e = 1.602176634e-19 # C
-eps0_vac = 8.8541878128e-12 # F m^-1
-kB = 1.380649e-23 # J K^-1
-NA = 6.02214076e23 # mol^-1
-AMU_TO_KG = 1.66053906660e-27
 
 ION_FITS = {
     "resname LIP and name LI": (-515.407, 515.409, 0.000),
@@ -58,18 +51,18 @@ def calc_activity(
     """
 
     # ---------------- DH part ----------------
-    zeta = e**2 / (8.0 * np.pi * eps0_vac * eps_sol * kB * temp)
+    zeta = const.e2c**2 / (8.0 * np.pi * const.eps0 * eps_sol * const.kB * temp)
 
     kappa = np.sqrt(
-        (NA * e**2 * rho_solv * 2.0 * c) /
-        (eps0_vac * eps_sol * kB * temp)
+        (const.NA * const.e2c**2 * rho_solv * 2.0 * c) /
+        (const.eps0 * eps_sol * const.kB * temp)
     )
 
     ln_gamma_DH = -(zeta * kappa) / (1.0 + kappa * a)
 
     # ---------------- Born part ----------------
-    pref_p = e**2 / (8.0 * np.pi * eps0_vac * kB * temp * R_plus)
-    pref_m = e**2 / (8.0 * np.pi * eps0_vac * kB * temp * R_minus)
+    pref_p = const.e2c**2 / (8.0 * np.pi * const.eps0 * const.kB * temp * R_plus)
+    pref_m = const.e2c**2 / (8.0 * np.pi * const.eps0 * const.kB * temp * R_minus)
 
     ln_gamma_p = pref_p * ((1.0 / eps_sol) - (1.0 / eps_solv))
     ln_gamma_m = pref_m * ((1.0 / eps_sol) - (1.0 / eps_solv))
@@ -96,20 +89,20 @@ def born_radius(
     print(f"delta_g_neg = {delta_g_neg_kjmol:.4f} kJ/mol")
 
     # kJ/mol -> J per ion
-    delta_g_pos = delta_g_pos_kjmol * 1000.0 / NA
-    delta_g_neg = delta_g_neg_kjmol * 1000.0 / NA
+    delta_g_pos = delta_g_pos_kjmol * 1000.0 / const.NA
+    delta_g_neg = delta_g_neg_kjmol * 1000.0 / const.NA
 
-    prefactor = 8.0 * np.pi * eps0_vac
+    prefactor = 8.0 * np.pi * const.eps0
 
     z_plus = 1; z_minus = -1
     R_pos = (
-        (z_plus**2 * e**2)
+        (z_plus**2 * const.e2c**2)
         / (prefactor * delta_g_pos)
         * ((1.0 / eps_solv) - 1.0)
     )
 
     R_neg = (
-        (z_minus**2 * e**2)
+        (z_minus**2 * const.e2c**2)
         / (prefactor * delta_g_neg)
         * ((1.0 / eps_solv) - 1.0)
     )

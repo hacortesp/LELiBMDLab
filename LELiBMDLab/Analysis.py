@@ -7,6 +7,7 @@ import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.analysis.dielectric import DielectricConstant
 
+import LELiBMDLab.tools.constants as const
 
 from LELiBMDLab.tools.msd import (
     calc_Ltot,
@@ -39,15 +40,6 @@ from LELiBMDLab.tools.permittivity import (
     permittivity_corr,    
 )
 
-
-q =  1.602176634E-19 # C
-eps0_vac = 8.8541878128e-12
-NA = 6.02214076e23 # mol^-1
-AMU_TO_KG = 1.66053906660e-27
-A2cm = 1e-8  # Angstroms to cm
-ps2s = 1e-12  # picoseconds to seconds
-e2c = 1.60217662e-19  # elementary charge to Coulomb
-kb = 1.38064852e-23  # Boltzmann Constant, J/K
 
 
 class TrajAnalysis:
@@ -91,13 +83,13 @@ class TrajAnalysis:
         self.V_m3 = self.volume * 1e-30
 
         # total mass
-        m_total_kg = self.run_wrap.atoms.masses.sum() * AMU_TO_KG
+        m_total_kg = self.run_wrap.atoms.masses.sum() * const.AMU_TO_KG
 
         # ion mass (cation + anion)
         m_ion_kg = (
             self.cations_unwrap.masses.sum() +
             self.anions_unwrap.masses.sum()
-        ) * AMU_TO_KG
+        ) * const.AMU_TO_KG
         # solvent mass (what molality needs)
         m_solvent_kg = m_total_kg - m_ion_kg
   
@@ -107,7 +99,7 @@ class TrajAnalysis:
 
         vsol_L = self.volume * 1e-27
 
-        n_cation = self.num_cation / NA
+        n_cation = self.num_cation / const.NA
 
         # molarity
         c_m = n_cation / vsol_L
@@ -273,16 +265,16 @@ class TrajAnalysis:
         return mean, std
 
     def calc_conductivity(self, slope, v, T, q_eff):
-        convert = e2c * e2c / ps2s / A2cm * 1000
+        convert = const.e2c * const.e2c / const.ps2s / const.A2cm * 1000
 
-        sigma = (q_eff**2 * slope) / (2*3) / kb / T / v * convert # "mS/cm"
+        sigma = (q_eff**2 * slope) / (2*3) / const.kB / T / v * convert # "mS/cm"
 
         return sigma
         
     def calc_transfer_number(self, slope_plusplus, slope_minusminus, T, v, sigma, q_eff):
-        convert = e2c * e2c / ps2s / A2cm * 1000
+        convert = const.e2c * const.e2c / const.ps2s / const.A2cm * 1000
 
-        slope_plusminus = (sigma / convert * 6 * kb * T * v / q_eff**2 - slope_plusplus - slope_minusminus) / -2
+        slope_plusminus = (sigma / convert * 6 * const.kB * T * v / q_eff**2 - slope_plusplus - slope_minusminus) / -2
 
         t = (slope_plusplus - slope_plusminus) / (slope_plusplus + slope_minusminus - 2 * slope_plusminus)   # mS/cm
 
@@ -458,10 +450,10 @@ class TrajAnalysis:
 
         solv_wrap = mda.Universe(solv_tpr_path, solv_xtc_path)
         
-        m_solv_kg = solv_wrap.atoms.masses.sum() * AMU_TO_KG
+        m_solv_kg = solv_wrap.atoms.masses.sum() * const.AMU_TO_KG
         rho_solv = m_solv_kg / self.V_m3 
 
-        n_salt = self.num_cation / NA
+        n_salt = self.num_cation / const.NA
 
         c = n_salt / m_solv_kg        
        
@@ -549,7 +541,7 @@ class TrajAnalysis:
 
         alphas = {
             "EC":  0.9487,
-            "DMC": 1.7838, #2.0494
+            "DMC": 1.7838,
             "EMC": 2.1269,
             "PC":  0.9695,
             "DEC": 2.2056,
@@ -676,16 +668,13 @@ class TrajAnalysis:
         fluct = M2_mean - M_mean * M_mean
 
         # ---------- dielectric ----------
-        # (C·m)^2 / (e·Å)^2
-        dipole_conv = (q * 1e-10) ** 2
-
         # convert fluctuations
-        fluct_si = fluct * dipole_conv
+        fluct_si = fluct * const.dipole_conv
 
         eps = (
             1
             + fluct_si
-            / (eps0_vac * kb * self.temp * self.V_m3)
+            / (const.eps0 * const.kB * self.temp * self.V_m3)
         )
 
         eps_mean = eps.mean()

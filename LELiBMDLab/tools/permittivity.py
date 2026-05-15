@@ -1,11 +1,7 @@
 import os
 import numpy as np
 import MDAnalysis as mda
-
-
-q =  1.602176634E-19 # C
-eps0_vac = 8.8541878128e-12 # F m^-1
-kb = 1.38064852e-23  # Boltzmann Constant, J/K
+import LELiBMDLab.tools.constants as const
 
 alphas = {
     "EC":  0.9291,
@@ -106,17 +102,13 @@ def permittivity_corr(
     # (e·Å)^2
     fluct = M2_mean - M_mean * M_mean
 
-    # ---------- dielectric ----------
-    # (C·m)^2 / (e·Å)^2
-    dipole_conv = (q * 1e-10) ** 2
-
     # convert fluctuations
-    fluct_si = fluct * dipole_conv
+    fluct_si = fluct * const.dipole_conv
 
     eps = (
         1
         + fluct_si
-        / (eps0_vac * kb * temperature * volume_m3)
+        / (const.eps0 * const.kB * temperature * volume_m3)
     )
 
     eps_mean = eps.mean()
