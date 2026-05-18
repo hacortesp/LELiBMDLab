@@ -16,6 +16,7 @@ class GROMACSrun:
         temperature: float,
         *,
         parallel: bool = False,
+        equilibration: bool = True,
         gmx_exec: str = "gmx",
         gmx_mpi_exec: str = "gmx_mpi",
         ntasks_env: str = "SLURM_NTASKS",
@@ -27,6 +28,7 @@ class GROMACSrun:
 
         self.temp = temperature
         self.parallel = parallel
+        self.equilibration = equilibration
         self.gmx_exec = gmx_exec
         self.gmx_mpi_exec = gmx_mpi_exec
         self.ntasks_env = ntasks_env
@@ -57,43 +59,77 @@ class GROMACSrun:
 
     def _commands_local(self) -> list[str]:
         print("\n\n\n===== Running GROMACS in LOCAL mode =====\n")
-        return [
+
+        commands = [
             f"{self.gmx_exec} grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr",
             f"{self.gmx_exec} mdrun -v -deffnm em",
+        ]
 
-            
-            f"{self.gmx_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
-            f"{self.gmx_exec} mdrun -deffnm npt_eq",
+        if self.equilibration:
+            commands.extend([
+                f"{self.gmx_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
+                f"{self.gmx_exec} mdrun -deffnm npt_eq",
 
-            self._command_extract_volume("npt_eq.edr", "volume.xvg"),
+                self._command_extract_volume("npt_eq.edr", "volume.xvg"),
 
-            f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
+                f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
+            ])
+        else:
+            commands.append(
+                f"{self.gmx_exec} grompp -f nvt_prod.mdp -c em.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1"
+            )
+
+        commands.extend([
             f"{self.gmx_exec} mdrun -deffnm nvt_prod_wrap",
 
-            f"echo 0 |{self.gmx_exec} trjconv -s nvt_prod_wrap.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc -pbc nojump"
-        ]
+            f"echo 0 | {self.gmx_exec} trjconv "
+            f"-s nvt_prod_wrap.tpr "
+            f"-f nvt_prod_wrap.xtc "
+            f"-o nvt_prod_unwrap.xtc "
+            f"-pbc nojump"
+        ])
+
+        return commands
 
 
     def _commands_parallel(self) -> list[str]:
         ntasks = os.environ.get(self.ntasks_env)
+
         if ntasks is None:
             raise EnvironmentError(f"{self.ntasks_env} not set")
-        print("\n\n\n===== Running GROMACS in PARALLEL mode =====\n")
-        return [
 
+        print("\n\n\n===== Running GROMACS in PARALLEL mode =====\n")
+
+        commands = [
             f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr",
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm em",
-            
-            f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
-            f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm npt_eq",
- 
-            self._command_extract_volume("npt_eq.edr", "volume.xvg"),
+        ]
 
-            f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
+        if self.equilibration:
+            commands.extend([
+                f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
+                f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm npt_eq",
+
+                self._command_extract_volume("npt_eq.edr", "volume.xvg"),
+
+                f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
+            ])
+        else:
+            commands.append(
+                f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c em.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1"
+            )
+
+        commands.extend([
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm nvt_prod_wrap",
 
-            f"echo 0 |mpirun -np 1 {self.gmx_mpi_exec} trjconv -s nvt_prod_wrap.tpr -f nvt_prod_wrap.xtc -o nvt_prod_unwrap.xtc -pbc nojump"
-        ]
+            f"echo 0 | mpirun -np 1 {self.gmx_mpi_exec} trjconv "
+            f"-s nvt_prod_wrap.tpr "
+            f"-f nvt_prod_wrap.xtc "
+            f"-o nvt_prod_unwrap.xtc "
+            f"-pbc nojump"
+        ])
+
+        return commands
 
 
     # ========================================================

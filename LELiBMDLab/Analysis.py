@@ -41,7 +41,6 @@ from LELiBMDLab.tools.permittivity import (
 )
 
 
-
 class TrajAnalysis:
     def __init__(
         self,
@@ -110,7 +109,7 @@ class TrajAnalysis:
         print(f"Molality: {b_m:.2f} mol kg^-1")
 
 # ========================= conductivity =========================
-    def conductivity_split(self, window_ps: float = 9000, return_all: bool = False):
+    def conductivity_split(self, window_ps: float = 6000, return_all: bool = False):
         ps_per_frame = self.dt * self.dt_collection
         frames_per_window = int(window_ps / ps_per_frame)
         total_windows = self.num_frames // frames_per_window
@@ -180,7 +179,7 @@ class TrajAnalysis:
         else:
             return mean, std
 
-    def transfer_number_split(self, window_ps: float = 9000):
+    def transfer_number_split(self, window_ps: float = 6000):
         ps_per_frame = self.dt * self.dt_collection
         frames_per_window = int(window_ps / ps_per_frame)
         total_windows = self.num_frames // frames_per_window
@@ -282,36 +281,42 @@ class TrajAnalysis:
     
 # ========================= Coordination ========================= 
 
-    def coordination_number(self, group1_name, group2_name):
+    def coordination_number(
+        self,
+        group1_name,
+        group2_name,
+        write_files:bool = False,
+    ):
         bins, rdf, coord_number = self.get_rdf_coordination_array(group1_name, group2_name)
 
         res1 = self.extract_resname(group1_name)
         res2 = self.extract_resname(group2_name)
-        tag = f"{res1}__{res2}" 
+        tag = f"{res1}_{res2}" 
 
-        coor_dir = os.path.join(self.workdir, "coordination_files")
-        os.makedirs(coor_dir, exist_ok=True)
+        if write_files:
+            coor_dir = os.path.join(self.workdir, "coordination_files")
+            os.makedirs(coor_dir, exist_ok=True)
+                
             
-        
-        csv_path = os.path.join(coor_dir,  f"coord_{tag}.csv")
+            csv_path = os.path.join(coor_dir,  f"coord_{tag}.csv")
 
-        df = pd.DataFrame(
-            {
-                "bins": bins,
-                "rdf": rdf,
-                "coordination_number": coord_number,
-            }
-        )
-        df.to_csv(csv_path, index=False)
+            df = pd.DataFrame(
+                {
+                    "bins": bins,
+                    "rdf": rdf,
+                    "coordination_number": coord_number,
+                }
+            )
+            df.to_csv(csv_path, index=False)
 
 
-        plot_rdf_coordination(
-            bins,
-            rdf,
-            coord_number,
-            self.workdir,
-            filename=f"rdf_coordination_{tag}.png"
-        )
+            plot_rdf_coordination(
+                bins,
+                rdf,
+                coord_number,
+                self.workdir,
+                filename=f"rdf_coordination_{tag}.png"
+            )
 
         x_val, y_coord = obtain_rdf_coord(bins, rdf, coord_number)
 
@@ -510,6 +515,11 @@ class TrajAnalysis:
 
         atoms = run_wrap.atoms
 
+            
+        resnames = np.unique(atoms.resnames)
+        print("Residues in universe:", resnames, self.cation_name, self.anion_name)
+
+
         if atoms.n_atoms == 0:
             raise ValueError("Universe contains no atoms.")
 
@@ -522,6 +532,8 @@ class TrajAnalysis:
             start=run_start,
             end=run_end, 
             universe=run_wrap,
+            cation=self.cation_name,
+            anion=self.anion_name,
             temperature=self.temp,
             volume_m3=V_m3
         )

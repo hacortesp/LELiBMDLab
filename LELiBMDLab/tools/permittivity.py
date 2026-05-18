@@ -26,6 +26,8 @@ def permittivity_corr(
     start: int,
     end: int,
     universe,
+    cation,
+    anion,
     temperature,
     volume_m3,
     
@@ -33,9 +35,8 @@ def permittivity_corr(
     make_whole = True
     charge_tolerance = 1e-6
    
-
-    # ---------- build grouped atomgroups ----------
     atoms = universe.atoms
+
     grouped_atomgroups = {}
 
     for name, selection in solvent_selections.items():
@@ -65,7 +66,6 @@ def permittivity_corr(
             "No neutral solvent atomgroups found."
         )
 
-    # ---------- trajectory accumulation ----------
     M_total = np.zeros(3)
     M2_total = np.zeros(3)
 
@@ -84,8 +84,6 @@ def permittivity_corr(
                 ag.charges,
                 ag.positions,
             )
-
-            # Equation 8
             M_type *= alpha
 
             frame_M += M_type
@@ -121,6 +119,5 @@ def permittivity_corr(
     print(f"eps: {eps}")
     print(f"eps_mean: {eps_mean}")
 
-    ################################################
 
     return eps_mean

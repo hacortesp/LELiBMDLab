@@ -39,6 +39,7 @@ class MDsim:
         temperature: float = 298.0,
         *,
         parallel: bool = False,
+        equilibration: bool = True,
         gmx_exec: str = "gmx",
         gmx_mpi_exec: str = "gmx_mpi",
         nvt_time_ps: float = 30000,
@@ -51,6 +52,7 @@ class MDsim:
         self.temp = temperature
 
         self.parallel = parallel
+        self.equilibration = equilibration
         self.gmx_exec = gmx_exec
         self.gmx_mpi_exec = gmx_mpi_exec
 
@@ -82,6 +84,7 @@ class MDsim:
             workdir=self.sim_dir,
             temperature=self.temp,
             parallel=self.parallel,
+            equilibration=self.equilibration,
             gmx_exec=self.gmx_exec,
             gmx_mpi_exec=self.gmx_mpi_exec,
             steps=self.steps,
@@ -91,10 +94,15 @@ class MDsim:
         gmx.write_all()
         gmx.run()
 
-        self.average_volume, self.volume_frame = gmx.analyze_npt_volume(
-            start=2000,
-            dt_collection=2,
-        )
+        if self.equilibration:
+            self.average_volume, self.volume_frame = gmx.analyze_npt_volume(
+                start=2000,
+                dt_collection=2,
+            )
+        else:
+            self.average_volume = None
+            self.volume_frame = None
+
 
 
     # ========================================================
