@@ -1,0 +1,43 @@
+{
+  "input_csv": "results/sparse_campaign_weighted_permittivity/conductivity_results.csv",
+  "descriptor_csv": "electrolyte_outputs/descriptors.csv",
+  "output_dir": "results/surrogate_model_weighted_permittivity",
+  "random_seed": 42,
+  "n_rows": 65,
+  "n_groups": 13,
+  "features": [
+    "anion_bf4",
+    "anion_clo4",
+    "anion_fsi",
+    "anion_pf6",
+    "anion_tfsi",
+    "frac_dec",
+    "frac_dmc",
+    "frac_dme",
+    "frac_ec",
+    "frac_emc",
+    "frac_pc",
+    "has_dec",
+    "has_dmc",
+    "has_dme",
+    "has_ec",
+    "has_emc",
+    "has_pc",
+    "q_scale",
+    "salt_conc",
+    "salt_conc_x_weighted_permittivity",
+    "salt_conc_x_weighted_viscosity",
+    "solvent_entropy",
+    "temperature",
+    "weighted_permittivity",
+    "weighted_viscosity_mpa_s_25c"
+  ],
+  "success_statuses": [
+    "parsed",
+    "completed",
+    "complete",
+    "success",
+    "successful",
+    "ok"
+  ]
+}

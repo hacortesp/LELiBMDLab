@@ -1,0 +1,7 @@
+feature,importance,importance_type,model
+temperature,0.5130062428841864,model_feature_importance,shallow_tree
+salt_conc_x_weighted_viscosity,0.4869937571158136,model_feature_importance,shallow_tree
+weighted_viscosity_mpa_s_25c,0.0,model_feature_importance,shallow_tree
+weighted_permittivity,0.0,model_feature_importance,shallow_tree
+salt_conc_x_weighted_permittivity,0.0,model_feature_importance,shallow_tree
+anion_tfsi,0.0,model_feature_importance,shallow_tree

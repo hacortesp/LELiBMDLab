@@ -24,9 +24,16 @@ logging.getLogger('MDAnalysis').setLevel(logging.WARNING)
 
 
 def calc_rdf_coord(group1, group2, v, nbins=200, range_rdf=(0.0, 10.0)):
+    universe = group1.universe
+    n_frames = len(universe.trajectory)
+    start_frame = max(0, n_frames - 5000)
+    
     # Initialize RDF analysis
     rdf_analysis = rdf.InterRDF(group1, group2, nbins=nbins, range=range_rdf)
-    rdf_analysis.run()
+    rdf_analysis.run(
+        start=start_frame,
+        stop=n_frames,
+    )
 
     # Calculate coordination numbers
     rho = group2.n_atoms / v  # Density of the second group
@@ -64,7 +71,6 @@ def obtain_rdf_coord(bins, rdf, coord_numbers):
     y_coord = round(float(np.interp(x_val, bins, coord_numbers)), 3)
 
     return x_val, y_coord
-
 
 def plot_rdf_coordination(
     bins,
@@ -148,7 +154,6 @@ def select_shell(
         distance_str = distance
     return "(" + species_selection + ") and (around " + distance_str + " index " + str(center_atom.index) + ")"
 
-
 def analyze_coordination_structure(
     run: mda.Universe,
     run_start: int,
@@ -206,7 +211,7 @@ def analyze_coordination_structure(
 
     def concat_coord_array(nvt_run, func, center_atoms, distance_dict, select_dict, run_start, run_end):
         num_array = func(nvt_run, center_atoms[0], distance_dict, select_dict, run_start, run_end)
-        for atom in tqdm(center_atoms[1::]):
+        for atom in center_atoms[1::]:
             this_atom = func(nvt_run, atom, distance_dict, select_dict, run_start, run_end)
             for kw in num_array:
                 num_array[kw] = np.concatenate((num_array.get(kw), this_atom.get(kw)), axis=0)
@@ -262,7 +267,6 @@ def analyze_coordination_structure(
 
     return pd.DataFrame(df_dict)
 
-
 def compute_periodic_distance_matrix(
     positions: np.ndarray,
     box_length: float,
@@ -280,7 +284,6 @@ def compute_periodic_distance_matrix(
         dist_matrix[i] = np.linalg.norm(delta, axis=1)
 
     return dist_matrix
-
 
 def calc_population_frame_data(positions, box, types, index, r_cut):
     dist_matrix = compute_periodic_distance_matrix(
@@ -310,7 +313,6 @@ def calc_population_frame_data(positions, box, types, index, r_cut):
             pop_matrix[c_count, a_count] += 1
 
     return pop_matrix, index
-
 
 def calc_population_parallel(
     run,
@@ -352,8 +354,7 @@ def calc_population_parallel(
 
         results = [
             f.result()
-            for f in tqdm(as_completed(futures),
-                          total=len(futures))
+            for f in as_completed(futures)
         ]
 
     sorted_results = sorted(results, key=lambda x: x[1])
@@ -367,8 +368,6 @@ def calc_population_parallel(
     avg_population = np.mean(stacked_population, axis=2)
     np.savetxt(csv_path, avg_population, fmt="%.6f")
     plot_population_heatmap(avg_population, png_path)
-
-
 
 def plot_population_heatmap(avg_population, png_path):
     rc("text", usetex=False)
@@ -447,5 +446,133 @@ def plot_population_heatmap(avg_population, png_path):
     plt.savefig(png_path, dpi=300, bbox_inches="tight")
     plt.close()
 
+def cip_finder(
+    start,
+    end,
+    run,
+    cation,
+    anion,
+    r_cut
+):
+    cluster_data = []
+    print(f"{anion.split()[-1] }–{cation.split()[-1]} distance cutoff: {r_cut} Å")
+
+    for idx in range(start, end):
+
+        run.trajectory[idx]
+
+        cations = run.select_atoms(cation)
+        anions = run.select_atoms(anion)
+
+        ions = cations + anions
+        positions = ions.positions.copy()
+        charges = ions.charges.copy()
+        types = ions.types.copy()
+        indices = ions.indices.copy()
+        box = run.trajectory.ts.dimensions[:3].copy()
+
+        dist_matrix = compute_periodic_distance_matrix(
+            positions=positions,
+            box_length=box,
+        )
+
+        model = DBSCAN(
+            eps=r_cut,
+            min_samples=1,
+            metric="precomputed",
+        )
+
+        labels = model.fit_predict(dist_matrix)
+        unique_clusters = np.unique(labels)
+
+        print(f"\nFrame {idx}")
+
+        for cluster_id in unique_clusters:
+            mask = labels == cluster_id
+
+            if mask.sum() != 2:
+                continue
+
+            cluster_atoms = ions[mask]
+
+            full_cluster = cluster_atoms.residues.atoms
+            
+            #"""
+            cluster_positions = unwrap_cluster_pbc(
+                cluster_atoms=full_cluster,
+                reference_name=anion.split()[-1],
+                box=box,
+            )
+            #"""
+            #cluster_positions = (full_cluster.positions.copy())
+            cluster_charges = (full_cluster.charges.copy())
+            cluster_types = (full_cluster.types.copy())
+            cluster_indices = (full_cluster.indices.copy())
+
+            total_charge = cluster_charges.sum()
+
+            print(
+                f"Cluster {cluster_id}: "
+                f"n_atoms={len(full_cluster)}, "
+                f"charge={total_charge:.3f}"
+            )
+
+            for i in range(len(cluster_positions)):
+
+                x, y, z = cluster_positions[i]
+
+                print(
+                    f"  {cluster_types[i]:>4s} "
+                    f"q={cluster_charges[i]:>7.3f} "
+                    f"xyz=("
+                    f"{x:8.3f}, "
+                    f"{y:8.3f}, "
+                    f"{z:8.3f})"
+                )
+
+            cluster_data.append(
+                {
+                    "frame": idx,
+                    "cluster": int(cluster_id),
+                    "n_atoms": len(full_cluster),
+                    "total_charge": float(total_charge),
+                    "positions": cluster_positions,
+                    "charges": cluster_charges,
+                    "types": cluster_types,
+                    "indices": cluster_indices,
+                }
+            )
+
+    return cluster_data
+
+def unwrap_cluster_pbc(
+    cluster_atoms,
+    reference_name,
+    box,
+):
+
+    positions = cluster_atoms.positions.copy()
+
+    ref_atoms = cluster_atoms.select_atoms(
+        f"name {reference_name}"
+    )
+
+    if len(ref_atoms) == 0:
+        raise ValueError(
+            f"No reference atom '{reference_name}' "
+            f"found in cluster."
+        )
+
+    # Use first matching atom
+    ref_pos = ref_atoms.positions[0]
+
+    unwrapped_positions = positions.copy()
+
+    for i in range(len(unwrapped_positions)):
+        delta = unwrapped_positions[i] - ref_pos
+        delta -= box * np.round(delta / box)
+        unwrapped_positions[i] = ref_pos + delta
+
+    return unwrapped_positions
 
 

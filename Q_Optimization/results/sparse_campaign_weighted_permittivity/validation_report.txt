@@ -1,0 +1,8 @@
+Zero-salt electrolyte rebuild validation
+rows_removed_because_salt_conc_eq_0: 3
+rows_remaining: 495
+updated_weighted_permittivity_clusters: 6
+campaign_systems_selected: 13
+campaign_zero_salt_rows: 0
+no_zero_salt_systems_remain_in_campaign: True
+cluster_allocation: 1:4, 4:3, 3:2, 2:2, 5:1, 6:1

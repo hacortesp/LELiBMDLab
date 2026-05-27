@@ -1,0 +1,19 @@
+Step F q_scale inference model summary
+======================================
+training_rows: 495
+weighted_permittivity_clusters: 6
+selected_model: shallow_tree
+cv_rmse_q_scale: 0.0663897
+cv_mae_q_scale: 0.0517401
+test_rmse_q_scale: 0.0692225
+test_mae_q_scale: 0.0547153
+test_r2: -0.39652
+features: weighted_permittivity, weighted_viscosity_mpa_s_25c, salt_conc_x_weighted_permittivity, salt_conc_x_weighted_viscosity, temperature, anion_tfsi
+
+Top feature effects:
+- temperature: 0.513006
+- salt_conc_x_weighted_viscosity: 0.486994
+- weighted_viscosity_mpa_s_25c: 0
+- weighted_permittivity: 0
+- salt_conc_x_weighted_permittivity: 0
+- anion_tfsi: 0

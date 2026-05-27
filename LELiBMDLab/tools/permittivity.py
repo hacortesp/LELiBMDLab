@@ -25,7 +25,7 @@ solvent_selections = {
 def permittivity_corr(
     start: int,
     end: int,
-    universe,
+    run,
     cation,
     anion,
     temperature,
@@ -35,7 +35,7 @@ def permittivity_corr(
     make_whole = True
     charge_tolerance = 1e-6
    
-    atoms = universe.atoms
+    atoms = run.atoms
 
     grouped_atomgroups = {}
 
@@ -71,7 +71,7 @@ def permittivity_corr(
 
     n_frames = 0
 
-    for ts in universe.trajectory[start:end]:
+    for ts in run.trajectory[start:end]:
 
         frame_M = np.zeros(3)
 

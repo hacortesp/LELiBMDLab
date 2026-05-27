@@ -1,0 +1,25 @@
+Simple Step E q_scale surrogate summary
+=======================================
+selected_feature_set: qscale_permittivity
+selected_model: linear
+target_transform: log1p
+grouped_cv_rmse_mS_cm: 7.33786
+grouped_cv_mae_mS_cm: 5.94525
+grouped_cv_r2: -0.892052
+heldout_rmse_mS_cm: 3.41109
+heldout_mae_mS_cm: 2.63518
+heldout_r2: 0.175502
+
+Scientific comparison:
+- best_base_rmse: 7.313921160597313
+- best_cluster_rmse: 7.485473522186284
+- best_viscosity_rmse: 7.948262601849545
+- best_viscosity_cluster_rmse: 6.962303859415084
+- cluster_improvement_fraction: -0.023455593493840864
+- viscosity_improvement_fraction: 0.0698913250071049
+- clusters_with_negative_qscale_sensitivity: 5
+- clusters_with_positive_qscale_sensitivity: 1
+
+Top selected-model effects:
+- numeric__q_scale: -0.19983
+- numeric__weighted_permittivity: 0.0369704

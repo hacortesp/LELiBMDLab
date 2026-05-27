@@ -1,0 +1,25 @@
+Step E surrogate model summary
+================================
+training_rows_after_collapse: 65
+electrolyte_groups: 13
+best_model: extra_trees
+target_transform: log1p
+cv_rmse_mean_mS_cm: 4.88318
+cv_mae_mean_mS_cm: 3.91967
+cv_r2_mean: 0.262657
+test_rmse_mS_cm: 5.80378
+test_mae_mS_cm: 3.44335
+test_r2: -1.38685
+q_scale_importance_rank: 3
+
+Top features:
+- numeric__temperature: 0.391585
+- numeric__has_dmc: 0.122681
+- numeric__q_scale: 0.0747151
+- numeric__anion_tfsi: 0.0705381
+- numeric__salt_conc_x_weighted_permittivity: 0.0564224
+- numeric__weighted_permittivity: 0.0382659
+- numeric__frac_pc: 0.0329013
+- numeric__frac_dmc: 0.0319155
+- numeric__salt_conc_x_weighted_viscosity: 0.0288845
+- numeric__has_emc: 0.0256266

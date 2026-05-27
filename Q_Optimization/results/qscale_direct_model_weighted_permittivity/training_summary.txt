@@ -1,0 +1,13 @@
+Direct q_scale-optimal model training
+====================================
+systems: 13
+selected_model: shallow_random_forest
+features: salt_conc, temperature, experimental_conductivity_ms_cm, cluster_id, mean_conductivity_uncertainty_ms_cm, cation_name, anion_name, solvents, composition_summary
+
+Best CV rows:
+                model  n_folds  cv_mae_mean  cv_mae_std  cv_rmse_mean  cv_rmse_std  cv_r2_mean  cv_r2_std
+shallow_random_forest        5     0.032565    0.010017      0.037256     0.014931    0.170345   0.647033
+           small_tree        5     0.042917    0.017854      0.051272     0.018342   -0.431146   0.842555
+    linear_regression        5     0.044571    0.020267      0.053102     0.028230   -0.717192   1.232880
+                ridge        5     0.044752    0.015772      0.053340     0.025126   -0.475120   0.977663
+                lasso        5     0.048108    0.019813      0.056392     0.024304   -0.602445   0.857485

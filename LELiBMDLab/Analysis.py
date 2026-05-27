@@ -27,9 +27,9 @@ from LELiBMDLab.tools.coordination import (
     obtain_rdf_coord,
     plot_rdf_coordination,  
     analyze_coordination_structure,
-    calc_population_parallel
+    calc_population_parallel,
+    cip_finder
 )
-
 
 from LELiBMDLab.tools.activity import (
     born_radius,
@@ -40,24 +40,38 @@ from LELiBMDLab.tools.permittivity import (
     permittivity_corr,    
 )
 
+MOL_SELECTION = {
+    "EC": "resname _EC and name C2",
+    "DMC": "resname DMC and name C2",
+    "EMC": "resname EMC and name C2",
+    "PC": "resname _PC and name C2",
+    "DEC": "resname DEC and name C2",
+    "DME": "resname DME and name C3",
+    "PF6": "resname _PF and name P1",
+    "TFSI": "resname TFS and name N1",
+    "FSI": "resname FSI and name N2",
+    "BF4": "resname _BF and name B1",
+    "ClO4": "resname ClO and name Cl",
+    "Li": "resname LIP and name LI", 
+}
 
 class TrajAnalysis:
     def __init__(
         self,
         workdir: str,
         dt: float = 0.002,
-        dt_collection: int = 2000,
+        dt_collection: int = 500,
         temperature: float = 300.0,
-        cation_name: str = "resname LIP and name LI",
-        anion_name: str = "resname _PF and name P1",
-        q_eff: float = 0.85,
+        cation_name: str = "Li",
+        anion_name: str = "PF6",
+        q_eff: float = 0.80,
     ):
         self.workdir = workdir
         self.dt = dt
         self.dt_collection = dt_collection
         self.temp = temperature
-        self.cation_name = cation_name
-        self.anion_name = anion_name
+        self.cation_name = MOL_SELECTION[cation_name]
+        self.anion_name = MOL_SELECTION[anion_name]
         self.q_eff =  q_eff  
         
         tpr_path = os.path.join(self.workdir, "nvt_prod_wrap.tpr")
@@ -67,8 +81,8 @@ class TrajAnalysis:
         self.run_wrap = mda.Universe(tpr_path, wrap_xtc_path)
         self.run_unwrap = mda.Universe(tpr_path, unwrap_xtc_path)
 
-        self.cations_unwrap = self.run_unwrap.select_atoms(cation_name).residues
-        self.anions_unwrap = self.run_unwrap.select_atoms(anion_name).residues
+        self.cations_unwrap = self.run_unwrap.select_atoms(self.cation_name).residues
+        self.anions_unwrap = self.run_unwrap.select_atoms(self.anion_name).residues
         
         self.volume = self.run_unwrap.coord.volume        
         self.num_cation = len(self.cations_unwrap)
@@ -283,10 +297,13 @@ class TrajAnalysis:
 
     def coordination_number(
         self,
-        group1_name,
-        group2_name,
-        write_files:bool = False,
+        center_atom,
+        counter_atom,
+        write_files:bool = True,
     ):
+        group1_name = MOL_SELECTION[center_atom]
+        group2_name = MOL_SELECTION[counter_atom]
+        
         bins, rdf, coord_number = self.get_rdf_coordination_array(group1_name, group2_name)
 
         res1 = self.extract_resname(group1_name)
@@ -325,6 +342,7 @@ class TrajAnalysis:
     def get_rdf_coordination_array(self, group1_name, group2_name):
         group1 = self.run_wrap.select_atoms(group1_name)
         group2 = self.run_wrap.select_atoms(group2_name)
+
         bins, rdf, coord_number = calc_rdf_coord(
             group1,
             group2,
@@ -348,7 +366,10 @@ class TrajAnalysis:
         center_atom: str,
         counter_atom: str
     ):
-       
+
+        center = MOL_SELECTION[center_atom]
+        counter = MOL_SELECTION[counter_atom]
+
         solve_dir = os.path.join(self.workdir, "solvatation_structure")
         os.makedirs(solve_dir, exist_ok=True)
 
@@ -356,8 +377,8 @@ class TrajAnalysis:
         csv_path = os.path.join(solve_dir, "solvatation.csv")
 
         select_dict = {
-            "center": center_atom,
-            "counter": counter_atom,
+            "center": center,
+            "counter": counter,
         }
 
         df = analyze_coordination_structure(
@@ -377,8 +398,8 @@ class TrajAnalysis:
 
     def ion_cluster_population(self, run_start, run_end, center_atom, counter_atom, distance=3.2, core = 2):
 
-        select_cations = center_atom
-        select_anions = counter_atom
+        select_cations = MOL_SELECTION[center_atom]
+        select_anions = MOL_SELECTION[counter_atom]
 
         assoc_dir = os.path.join(self.workdir, "ion_association")
         os.makedirs(assoc_dir, exist_ok=True)
@@ -515,11 +536,6 @@ class TrajAnalysis:
 
         atoms = run_wrap.atoms
 
-            
-        resnames = np.unique(atoms.resnames)
-        print("Residues in universe:", resnames, self.cation_name, self.anion_name)
-
-
         if atoms.n_atoms == 0:
             raise ValueError("Universe contains no atoms.")
 
@@ -528,10 +544,61 @@ class TrajAnalysis:
                 "Atoms do not have charges."
             )
         
+        resnames = np.unique(atoms.resnames)
+
+        cation_key = self.get_mol_selection_key(self.cation_name)
+        anion_key = self.get_mol_selection_key(self.anion_name)
+
+        x_cat_an, y_cat_an = self.coordination_number(
+        cation_key,
+        anion_key,
+        write_files=False,
+        )
+
+        solvent_selections = self.get_solvent_selections(resnames)        
+        solvent_distances = {}
+        
+
+        for res, solvent_key in solvent_selections.items():
+
+            x_solv, y_solv = self.coordination_number(
+                cation_key,
+                solvent_key,
+                write_files=False,
+            )
+
+            solvent_distances[solvent_key] = x_solv
+
+        larger_solvents = {
+            res: dist
+            for res, dist in solvent_distances.items()
+            if dist > x_cat_an
+        }
+
+        if larger_solvents:
+            largest_res = max(
+                larger_solvents,
+                key=larger_solvents.get
+            )
+            r_cut = larger_solvents[largest_res]
+        else:
+            r_cut = x_cat_an
+
+
+        cip_array = cip_finder(
+            start=run_start,
+            end=run_end, 
+            run=run_wrap,
+            cation=self.cation_name,
+            anion=self.anion_name,
+            r_cut=r_cut
+        ) 
+
+
         eps_corrected = permittivity_corr(
             start=run_start,
             end=run_end, 
-            universe=run_wrap,
+            run=run_wrap,
             cation=self.cation_name,
             anion=self.anion_name,
             temperature=self.temp,
@@ -539,301 +606,51 @@ class TrajAnalysis:
         )
 
         return eps_corrected    
-    
-    def permittivity_corrected(
+
+    def get_solvent_selections(
         self,
-        run_start: int,
-        run_end: int,
-        temperature: float,
-        trajdir: str | None = None,
+        resnames,
     ):
-        make_whole = True
-        charge_tolerance = 1e-6
-        
 
-        alphas = {
-            "EC":  0.9487,
-            "DMC": 1.7838,
-            "EMC": 2.1269,
-            "PC":  0.9695,
-            "DEC": 2.2056,
-            "DME": 0.8825,
-        }
-        
-        # ---------- solvent selections ----------
-        solvent_selections = {
-            "EC": "resname _EC",
-            "DMC": "resname DMC",
-            "EMC": "resname EMC",
-            "PC": "resname _PC",
-            "DEC": "resname DEC",
-            "DME": "resname DME",
-        }
+        solvent_selections = {}
 
+        for res in resnames:
 
-        # ---------- resolve universe ----------
-        if trajdir is None or trajdir == self.workdir:
-            run_wrap = self.run_wrap
-        else:
-            solv_tpr_path = os.path.join(trajdir, "nvt_prod_wrap.tpr")
-            solv_xtc_path = os.path.join(trajdir, "nvt_prod_wrap.xtc")
-
-            if not os.path.isfile(solv_tpr_path):
-                raise FileNotFoundError(
-                    f"nvt_prod_wrap.tpr not found in folder: {trajdir}"
-                )
-
-            if not os.path.isfile(solv_xtc_path):
-                raise FileNotFoundError(
-                    f"nvt_prod_wrap.xtc not found in folder: {trajdir}"
-                )
-
-            run_wrap = mda.Universe(solv_tpr_path, solv_xtc_path)
-
-        atoms = run_wrap.atoms
-
-        if atoms.n_atoms == 0:
-            raise ValueError("Universe contains no atoms.")
-
-        if not hasattr(atoms, "charges"):
-            raise AttributeError(
-                "Atoms do not have charges."
-            )
-        
-        neutral_fragments = [
-            frag
-            for frag in atoms.fragments
-            if abs(frag.total_charge()) <= charge_tolerance
-        ]
-
-        ################################################
-
-        # ---------- build grouped atomgroups ----------
-        grouped_atomgroups = {}
-
-        for name, selection in solvent_selections.items():
-
-            ag = atoms.select_atoms(selection)
-
-            if ag.n_atoms == 0:
-                continue
-
-            neutral_fragments = [
-                frag
-                for frag in ag.fragments
-                if abs(frag.total_charge()) <= charge_tolerance
-            ]
-
-            if not neutral_fragments:
-                continue
-
-            grouped_ag = neutral_fragments[0]
-
-            for frag in neutral_fragments[1:]:
-                grouped_ag += frag
-
-            grouped_atomgroups[name] = grouped_ag
-
-        if not grouped_atomgroups:
-            raise ValueError(
-                "No neutral solvent atomgroups found."
-            )
-
-        # ---------- trajectory accumulation ----------
-        M_total = np.zeros(3)
-        M2_total = np.zeros(3)
-
-        n_frames = 0
-
-        for ts in run_wrap.trajectory[run_start:run_end]:
-
-            frame_M = np.zeros(3)
-
-            for name, ag in grouped_atomgroups.items():
-
-                if make_whole:
-                    ag.unwrap(compound="fragments")
-
-                alpha = alphas.get(name, 1.0)
-
-                # e·Å
-                M_type = np.dot(
-                    ag.charges,
-                    ag.positions,
-                )
-
-                # Equation 8
-                M_type *= alpha
-
-                frame_M += M_type
-
-            M_total += frame_M
-            M2_total += frame_M * frame_M
-
-            n_frames += 1
-
-        # ---------- averages ----------
-        M_mean = M_total / n_frames
-        M2_mean = M2_total / n_frames
-
-        # (e·Å)^2
-        fluct = M2_mean - M_mean * M_mean
-
-        # ---------- dielectric ----------
-        # convert fluctuations
-        fluct_si = fluct * const.dipole_conv
-
-        eps = (
-            1
-            + fluct_si
-            / (const.eps0 * const.kB * self.temp * self.V_m3)
-        )
-
-        eps_mean = eps.mean()
-
-
-        print(f"M: {M_mean}")
-        print(f"M2: {M2_mean}")
-        print(f"fluct: {fluct}")
-
-        print(f"eps: {eps}")
-        print(f"eps_mean: {eps_mean}")
-
-        ################################################
-
-        if not neutral_fragments:
-            raise ValueError("No neutral fragments found.")
-
-        atomgroup = neutral_fragments[0]
-        for ag in neutral_fragments[1:]:
-            atomgroup += ag
-
-        diel = DielectricConstant(
-            atomgroup,
-            temperature=temperature,
-            make_whole=make_whole,
-        )
-
-        diel.run(start=run_start, stop=run_end)
-        print(f"M: {diel.results.M}")
-        print(f"M2: {diel.results.M2}")
-        print(f"fluct: {diel.results.fluct}")
-        print(f"eps_r: {diel.results.eps_mean}")
-
-        return diel.results.eps_mean
-  
-    def permittivity_with_ions(
-        self,
-        run_start: int,
-        run_end: int,
-        temperature: float,
-        trajdir: str | None = None,
-    ):
-        make_whole = True
-        charge_tolerance = 1e-6
-
-        # ---------- resolve universe ----------
-        if trajdir is None or trajdir == self.workdir:
-            run_wrap = self.run_wrap
-        else:
-            solv_tpr_path = os.path.join(trajdir, "nvt_prod_wrap.tpr")
-            solv_xtc_path = os.path.join(trajdir, "nvt_prod_wrap.xtc")
-
-            if not os.path.isfile(solv_tpr_path):
-                raise FileNotFoundError(
-                    f"nvt_prod_wrap.tpr not found in folder: {trajdir}"
-                )
-
-            if not os.path.isfile(solv_xtc_path):
-                raise FileNotFoundError(
-                    f"nvt_prod_wrap.xtc not found in folder: {trajdir}"
-                )
-
-            run_wrap = mda.Universe(solv_tpr_path, solv_xtc_path)
-
-        atoms = run_wrap.atoms
-
-        if atoms.n_atoms == 0:
-            raise ValueError("Universe contains no atoms.")
-
-        if not hasattr(atoms, "charges"):
-            raise AttributeError(
-                "Atoms do not have charges. Ensure the topology includes charges."
-            )
-
-        # ---------- neutral molecules ----------
-        neutral_atomgroups = [
-            res.atoms
-            for res in atoms.residues
+            # Skip cation/anion residues
             if (
-                abs(res.atoms.total_charge()) <= charge_tolerance
-                and res.resname not in {"LIP", "ClO"}
-            )
-        ]
+                res in self.cation_name
+                or res in self.anion_name
+            ):
+                continue
 
-        # ---------- ion pairs ----------
-        lip_residues = run_wrap.select_atoms("resname LIP").residues
-        clo_residues = run_wrap.select_atoms("resname ClO").residues
+            # Find corresponding MOL_SELECTION key
+            for key, selection in MOL_SELECTION.items():
 
-        if len(lip_residues) != len(clo_residues):
-            raise ValueError(
-                f"Mismatch: {len(lip_residues)} LIP vs "
-                f"{len(clo_residues)} ClO"
-            )
+                if f"resname {res}" in selection:
 
-        for i, (lip_res, clo_res) in enumerate(
-            zip(lip_residues, clo_residues)
-        ):
-            li_atom = lip_res.atoms[0]
-            cl_atom = clo_res.atoms[0]
+                    solvent_selections[res] = key
+                    break
 
-            # create bond so MDAnalysis treats pair as one fragment
-            run_wrap.add_bonds([(li_atom.index, cl_atom.index)])
+        return solvent_selections
 
-            pair_ag = lip_res.atoms + clo_res.atoms
+    def get_mol_selection_key(
+        self,
+        selection_string,
+    ):
 
-            pair_charge = pair_ag.total_charge()
-            print(f"Ion pair {pair_ag}: charge = {pair_charge} e")
+        for key, value in MOL_SELECTION.items():
 
-            if abs(pair_charge) > charge_tolerance:
-                raise ValueError(
-                    f"Ion pair {i} not neutral. "
-                    f"Charge = {pair_charge}"
-                )
+            if value == selection_string:
+                return key
 
-            neutral_atomgroups.append(pair_ag)
-
-        if not neutral_atomgroups:
-            raise ValueError("No neutral molecules found.")
-
-        # ---------- combine all atomgroups ----------
-        atomgroup = neutral_atomgroups[0]
-
-        for ag in neutral_atomgroups[1:]:
-            atomgroup += ag
-
-        # ---------- final fragment neutrality check ----------
-        fragment_charges = atomgroup.total_charge(
-            compound="fragments"
+        raise ValueError(
+            f"No MOL_SELECTION key found for:"
+            f" {selection_string}"
         )
 
-        if not np.allclose(
-            fragment_charges,
-            0.0,
-            atol=1e-5,
-        ):
-            raise ValueError(
-                f"Non-neutral fragments detected: "
-                f"{fragment_charges}"
-            )
 
-        diel = DielectricConstant(
-            atomgroup,
-            temperature=temperature,
-            make_whole=make_whole,
-        )
 
-        diel.run(start=run_start, stop=run_end)
 
-        return diel.results.eps_mean
-  
+
+
+

@@ -1,0 +1,2 @@
+n_validation_systems,n_experiment_inside_simulated_range,q_scale_mae,q_scale_rmse,q_scale_r2,conductivity_mae,conductivity_rmse,conductivity_r2
+6,3,0.027482341269841244,0.03181374438468969,0.6761234138322003,1.089910139166667,1.3095777860199211,0.9602322452820156

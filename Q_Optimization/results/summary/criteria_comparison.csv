@@ -1,0 +1,5 @@
+criterion_name,features_used,number_of_samples,number_of_features,best_k,best_candidate_k,best_silhouette_score,calinski_harabasz_score,davies_bouldin_score,one_cluster_fallback_used,skip_reason
+weighted_permittivity,weighted_permittivity,495,1,6,6,0.9620744113090066,31674.601263707395,0.11336927217127792,False,
+weightedperm_weightedvisc,"weighted_permittivity, weighted_viscosity_mPa_s_25C",495,2,6,6,0.9448105888567919,23392.19104994571,0.200552046765049,False,
+weighted_viscosity,weighted_viscosity_mPa_s_25C,495,1,6,6,0.9418687614394182,32053.009083869416,0.10468913598215633,False,
+saltconc_weightedperm_weightedvisc,"salt_conc_x_weighted_permittivity, salt_conc_x_weighted_viscosity",495,2,5,5,0.7972778726861223,2570.667220540388,0.2782959436437753,False,
