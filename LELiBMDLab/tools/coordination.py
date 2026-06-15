@@ -520,8 +520,10 @@ def cip_finder(
             for i in range(len(cluster_positions)):
 
                 x, y, z = cluster_positions[i]
+                index = cluster_indices[i]
 
                 print(
+                    f"  idx={index:<6d} {cluster_types[i]:>4s} "
                     f"  {cluster_types[i]:>4s} "
                     f"q={cluster_charges[i]:>7.3f} "
                     f"xyz=("

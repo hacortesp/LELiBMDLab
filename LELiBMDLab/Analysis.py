@@ -556,8 +556,7 @@ class TrajAnalysis:
         )
 
         solvent_selections = self.get_solvent_selections(resnames)        
-        solvent_distances = {}
-        
+        solvent_distances = {}        
 
         for res, solvent_key in solvent_selections.items():
 

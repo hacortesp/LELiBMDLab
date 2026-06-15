@@ -198,25 +198,89 @@ class MDsim:
             self.scaled_itp[mol] = dst.name
 
             lines = src.read_text().splitlines()
-            new = []
+
+            charge_idx = -2 if has_mass else -1
+
+            atom_rows = []
             in_atoms = False
 
-            for line in lines:
+            for line_idx, line in enumerate(lines):
                 s = line.strip()
+
                 if s.startswith("["):
                     in_atoms = s.lower().startswith("[ atoms")
-                    new.append(line)
                     continue
 
-                if in_atoms and s and not s.startswith(";"):
-                    t = s.split()
-                    idx = -2 if has_mass else -1
-                    t[idx] = f"{float(t[idx]) * self.charge_scale:.4f}"
-                    new.append("  " + "  ".join(t))
-                else:
-                    new.append(line)
+                if not in_atoms or not s or s.startswith(";"):
+                    continue
 
-            dst.write_text("\n".join(new) + "\n")
+                body, sep, comment = line.partition(";")
+                tokens = body.split()
+
+                if len(tokens) < abs(charge_idx):
+                    raise ValueError(f"Could not parse atom line in {src}: {line}")
+
+                original_charge = float(tokens[charge_idx])
+                atom_rows.append(
+                    {
+                        "line_idx": line_idx,
+                        "tokens": tokens,
+                        "comment": (sep + comment) if sep else "",
+                        "original_charge": original_charge,
+                    }
+                )
+
+            if not atom_rows:
+                raise ValueError(f"No atoms found in [ atoms ] section of {src}")
+
+            original_total_charge = sum(row["original_charge"] for row in atom_rows)
+            target_total_charge = round(
+                original_total_charge * self.charge_scale,
+                4,
+            )
+
+            scaled_charges = [
+                round(row["original_charge"] * self.charge_scale, 4)
+                for row in atom_rows
+            ]
+
+            rounded_total_charge = round(sum(scaled_charges), 4)
+            residual_charge = round(target_total_charge - rounded_total_charge, 4)
+
+            if abs(residual_charge) > 0.0:
+                # Add the residual to the atom with the largest absolute charge.
+                # This minimizes the relative perturbation of the charge distribution.
+                correction_idx = max(
+                    range(len(scaled_charges)),
+                    key=lambda i: abs(scaled_charges[i]),
+                )
+
+                scaled_charges[correction_idx] = round(
+                    scaled_charges[correction_idx] + residual_charge,
+                    4,
+                )
+
+            final_total_charge = round(sum(scaled_charges), 4)
+
+            if abs(final_total_charge - target_total_charge) > 1e-4:
+                raise ValueError(
+                    f"Charge correction failed for {mol}: "
+                    f"target={target_total_charge:.4f}, "
+                    f"final={final_total_charge:.4f}"
+                )
+
+            for row, new_charge in zip(atom_rows, scaled_charges):
+                tokens = row["tokens"]
+                tokens[charge_idx] = f"{new_charge:.4f}"
+
+                new_line = "  " + "  ".join(tokens)
+
+                if row["comment"]:
+                    new_line += "  " + row["comment"].strip()
+
+                lines[row["line_idx"]] = new_line
+
+            dst.write_text("\n".join(lines) + "\n")
 
     # ========================================================
     # Topology generation

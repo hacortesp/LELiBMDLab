@@ -1,0 +1,6 @@
+cluster_id,salt_cluster_id,cluster_size,cluster_fraction,proportional_quota_exact,sampling_quota,selected_representatives,planned_simulations,q_scale_values_per_system,representative_row_index,representative_doi,representative_salt_conc,representative_temperature,representative_weighted_permittivity,representative_weighted_viscosity_mPa_s_25C
+1,PF6,242,0.488888888889,36.6666666667,36,36,180,5,11894,10.1149/2.0571912jes,1.004,283.15,46.05,1.2449999999999999
+2,ClO4,64,0.129292929293,9.69696969697,9,9,45,5,3744,10.1149/1.1344281,1.0,296.4654522,64.9,2.53
+3,TFSI,127,0.256565656566,19.2424242424,19,19,95,5,224,10.1016/j.jpowsour.2011.07.071,1.0,292.1342406,46.05,1.2449999999999999
+4,FSI,19,0.0383838383838,2.87878787879,5,5,25,5,44,10.1016/j.jpowsour.2010.12.040,1.0,297.7574305,28.73,1.025
+5,BF4,43,0.0868686868687,6.51515151515,6,6,30,5,66,10.1016/j.jpowsour.2010.12.040,1.0,283.0889854,28.73,1.025

@@ -2,7 +2,7 @@
 ;    name    nrexcl
 BF4    3
 
-[  atoms  ]
+[ atoms ]
 ;  nr        type    res     resname    atom  cgnr      charge
     1        B_001     1         _BF       B1     1     0.8276
     2        F_002     1         _BF       F2     2    -0.4569

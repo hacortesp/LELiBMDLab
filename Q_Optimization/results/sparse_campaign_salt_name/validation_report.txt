@@ -1,0 +1,19 @@
+Salt-family sparse campaign validation
+total_electrolytes_available: 495
+salt_cluster_sizes:
+  PF6: 242
+  ClO4: 64
+  TFSI: 127
+  FSI: 19
+  BF4: 43
+selected_representatives_by_salt_cluster:
+  PF6: 36
+  ClO4: 9
+  TFSI: 19
+  FSI: 5
+  BF4: 6
+total_selected_systems: 75
+total_planned_simulations: 375
+total_simulations_exceed_300: True
+every_salt_family_represented: True
+q_scale_grid: 0.70, 0.75, 0.80, 0.85, 0.90
