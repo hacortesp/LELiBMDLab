@@ -8,7 +8,7 @@ ION_FITS = {
     "resname ClO and name Cl": (-238.867, 239.628, 0.014),
     "resname FSI and name N2": (-199.503, 201.290, 0.033),
     "resname _PF and name P1": (-227.982, 232.768, 0.047),
-    "resname TFS and name N1": (-190.692, 206.142, 0.143),
+    "resname TFS and name N1": (-191.297, 205.422, 0.124),
 }
 
 def calc_activity(
