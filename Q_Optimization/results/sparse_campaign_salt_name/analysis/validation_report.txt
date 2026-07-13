@@ -1,12 +1,12 @@
 Sparse Campaign Conductivity Validation
 ============================================
 total_planned_jobs: 375
-jobs_with_valid_conductivity_mS_cm: 347
-jobs_missing_conductivity_mS_cm: 28
+jobs_with_valid_conductivity_mS_cm: 373
+jobs_missing_conductivity_mS_cm: 2
 unique_electrolyte_systems: 75
 unique_systems_with_at_least_one_conductivity: 75
-systems_with_complete_q_scale_coverage: 66
-systems_with_partial_q_scale_coverage: 9
+systems_with_complete_q_scale_coverage: 73
+systems_with_partial_q_scale_coverage: 2
 systems_with_no_valid_conductivity: 0
 any_system_missing_all_conductivity_values: False
 systems_missing_all_conductivity_values_count: 0
@@ -16,12 +16,12 @@ Salt Population Diagnostics
 salt_type  num_systems  num_simulation_points  appears_in_combined_parity_plot      diagnostic
       PF6           36                    178                             True present in plot
      ClO4            9                     45                             True present in plot
-     TFSI           19                     93                             True present in plot
+     TFSI           19                     95                             True present in plot
       FSI            5                     25                             True present in plot
-      BF4            6                      6                             True present in plot
+      BF4            6                     30                             True present in plot
 
 Coverage Diagnostics
 --------------------------------------------
-coverage_fraction: 0.693333
-covered_systems: 52
+coverage_fraction: 0.720000
+covered_systems: 54
 systems_with_at_least_one_simulated_conductivity: 75

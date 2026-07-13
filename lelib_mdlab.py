@@ -107,7 +107,7 @@ args = parse_args()
 
 start = timer()
 
-
+"""
 Builder(
     box=args.box,
     salt=args.anion_name,
@@ -150,7 +150,7 @@ epsilon = analysis.permittivity(
 print(f"Dielectric constant = {epsilon:.4f}\n")
 
 
-
+"""
 print("\n===== Calculating conductivity =====")
 cond, err = analysis.conductivity_split()
 print(f"Ionic conductivity = {cond:.4f} ± {err:.4f} mS/cm\n")

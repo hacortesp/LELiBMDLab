@@ -549,6 +549,9 @@ class TrajAnalysis:
         cation_key = self.get_mol_selection_key(self.cation_name)
         anion_key = self.get_mol_selection_key(self.anion_name)
 
+        print(f"cation selection: {cation_key}")
+        print(f"anion selection: {anion_key}")
+
         x_cat_an, y_cat_an = self.coordination_number(
         cation_key,
         anion_key,
@@ -582,7 +585,7 @@ class TrajAnalysis:
             r_cut = larger_solvents[largest_res]
         else:
             r_cut = x_cat_an
-
+        
 
         cip_array = cip_finder(
             start=run_start,
@@ -592,7 +595,6 @@ class TrajAnalysis:
             anion=self.anion_name,
             r_cut=r_cut
         ) 
-
 
         eps_corrected = permittivity_corr(
             start=run_start,

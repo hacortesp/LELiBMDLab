@@ -14,8 +14,7 @@ alphas = {
 
 # ---------- DIPOLE CORRECTION FITS ----------
 # xi(eps) = a - b / (eps + c)
-
-DIPOLE_CORRECTION_FITS = {
+dipole_correction_xi = {
     "resname ClO and name Cl": (0.9365122651, 1.0474708536, 3.4520340388),  # LiClO4
     "resname _BF and name B1": (0.9354347857, 0.4786633693, 1.6982050863),  # LiBF4
     "resname FSI and name N2": (0.9935864788, 0.6504155227, 0.6632177156),  # LiFSI
@@ -34,13 +33,14 @@ solvent_selections = {
 }
 
 def correction_factor_from_fit(ion_name: str, eps_solv: float) -> float:
-    if ion_name not in DIPOLE_CORRECTION_FITS:
+    if ion_name not in dipole_correction_xi:
         raise ValueError(f"No dipole correction parameters for ion: {ion_name}")
 
-    a, b, c = DIPOLE_CORRECTION_FITS[ion_name]
+    a, b, c = dipole_correction_xi[ion_name]
 
     xi = a - b / (eps_solv + c)
     return xi
+
 
 
 def permittivity_corr(
@@ -62,7 +62,7 @@ def permittivity_corr(
 
     for name, selection in solvent_selections.items():
         ag = atoms.select_atoms(selection)
-
+        
         if ag.n_atoms == 0:
             continue
 

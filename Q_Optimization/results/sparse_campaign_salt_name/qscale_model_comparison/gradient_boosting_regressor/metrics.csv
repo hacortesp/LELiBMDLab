@@ -1,0 +1,13 @@
+metric,value
+MAE,0.04266666666666667
+RMSE,0.05715476066494083
+median_absolute_error,0.04999999999999993
+exact_qscale_accuracy,0.3333333333333333
+within_one_step_accuracy,0.8533333333333334
+macro_F1,
+balanced_accuracy,
+raw_MAE,0.046490300675457764
+raw_RMSE,0.05728107226652741
+raw_median_absolute_error,0.03667484946380961
+raw_exact_qscale_accuracy,0.0
+raw_within_one_step_accuracy,0.6133333333333333

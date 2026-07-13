@@ -1,2 +1,2 @@
 total_planned_jobs,jobs_with_valid_conductivity_mS_cm,jobs_missing_conductivity_mS_cm,unique_electrolyte_systems,unique_systems_with_at_least_one_conductivity,systems_with_complete_q_scale_coverage,systems_with_partial_q_scale_coverage,systems_with_no_valid_conductivity,any_system_missing_all_conductivity_values,systems_missing_all_conductivity_values_count
-375,347,28,75,75,66,9,0,False,0
+375,373,2,75,75,73,2,0,False,0

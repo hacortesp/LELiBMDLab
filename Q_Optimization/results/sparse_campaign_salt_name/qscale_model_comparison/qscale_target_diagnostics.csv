@@ -1,0 +1,16 @@
+metric,value
+number_of_raw_simulation_rows,375
+number_of_valid_conductivity_rows,373
+number_of_unique_electrolyte_systems,75
+number_of_systems_with_complete_q_scale_coverage,73
+number_of_systems_with_partial_q_scale_coverage,2
+number_of_systems_excluded_invalid_experimental_or_calculated,0
+fraction_of_systems_experiment_in_simulated_range,0.72
+q_scale_optimal_count_0.70,14
+q_scale_optimal_count_0.75,15
+q_scale_optimal_count_0.80,18
+q_scale_optimal_count_0.85,16
+q_scale_optimal_count_0.90,12
+actual_available_q_scale_values,0.70;0.75;0.80;0.85;0.90
+cross_validation_method,StratifiedGroupKFold
+number_of_folds_used,5

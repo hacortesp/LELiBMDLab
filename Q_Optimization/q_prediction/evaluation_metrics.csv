@@ -1,0 +1,8 @@
+metric,value
+validation_split_method,StratifiedGroupKFold first fold
+training_systems,60
+validation_systems,15
+MAE,0.043333333333333335
+RMSE,0.061913918736689035
+exact_qscale_accuracy,0.4
+within_one_step_accuracy,0.8

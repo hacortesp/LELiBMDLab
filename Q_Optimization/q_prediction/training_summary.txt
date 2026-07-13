@@ -1,0 +1,82 @@
+Simplified Extra Trees q_scale training summary
+
+Input CSV: /home/hacortes/Li-EMDLab/Q_Optimization/results/sparse_campaign_salt_name/conductivity_results_filtered.csv
+Number of electrolyte systems: 75
+Random seed: 42
+
+System grouping:
+- Prefer original_row_index when it uniquely identifies system chemistry and conditions.
+- Otherwise use anion_name, salt_conc, solvents, solvent_fracs, temperature, and doi.
+
+Target definition:
+- q_scale_optimal = argmin_q |log(conductivity_mS_cm) - log(conductivity)|
+- Only finite positive experimental and simulated conductivities are used.
+- Ties are resolved by choosing the smallest tied q_scale.
+
+Target distribution:
+- q_scale 0.70: 14 systems
+- q_scale 0.75: 15 systems
+- q_scale 0.80: 18 systems
+- q_scale 0.85: 16 systems
+- q_scale 0.90: 12 systems
+
+Features used:
+- salt_conc_numeric
+- temperature_numeric
+- has_ec
+- frac_ec
+- has_pc
+- frac_pc
+- has_dme
+- frac_dme
+- has_dmc
+- frac_dmc
+- has_dec
+- frac_dec
+- has_emc
+- frac_emc
+- anion_name
+
+Numeric features:
+- salt_conc_numeric
+- temperature_numeric
+- has_ec
+- frac_ec
+- has_pc
+- frac_pc
+- has_dme
+- frac_dme
+- has_dmc
+- frac_dmc
+- has_dec
+- frac_dec
+- has_emc
+- frac_emc
+
+Categorical features:
+- anion_name
+
+Preprocessing:
+- Numeric features: median imputation.
+- Categorical features: most-frequent imputation and one-hot encoding.
+
+Model:
+- ExtraTreesClassifier(n_estimators=500, min_samples_leaf=2, class_weight='balanced')
+
+Top feature importances:
+- temperature_numeric: 0.164497
+- salt_conc_numeric: 0.125172
+- anion_name_PF6: 0.087736
+- anion_name_BF4: 0.085062
+- anion_name_TFSI: 0.084285
+- anion_name_ClO4: 0.056745
+- frac_pc: 0.055134
+- frac_ec: 0.050741
+- anion_name_FSI: 0.043180
+- has_dmc: 0.038874
+- has_ec: 0.035776
+- frac_dme: 0.035158
+- has_dme: 0.033199
+- frac_dmc: 0.032631
+- has_pc: 0.025519
+
