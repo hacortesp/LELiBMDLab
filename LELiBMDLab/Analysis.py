@@ -37,6 +37,7 @@ from LELiBMDLab.tools.activity import (
 )
 
 from LELiBMDLab.tools.permittivity import (
+    corrected_cip_dipoles,
     permittivity_corr,    
 )
 
@@ -419,6 +420,261 @@ class TrajAnalysis:
             png_path,
         )
 
+# ========================= Permittivity =========================
+    def permittivity_solv(
+        self,
+        run_start: int,
+        run_end: int,
+        trajdir: str,
+    ):
+
+        # ---------- solvent trajectory ----------
+        solv_tpr_path = os.path.join(trajdir, "nvt_prod_wrap.tpr")
+        solv_xtc_path = os.path.join(trajdir, "nvt_prod_wrap.xtc")
+
+        if not os.path.isfile(solv_tpr_path):
+            raise FileNotFoundError(
+                f"nvt_prod_wrap.tpr not found in folder: {trajdir}"
+            )
+
+        if not os.path.isfile(solv_xtc_path):
+            raise FileNotFoundError(
+                f"nvt_prod_wrap.xtc not found in folder: {trajdir}"
+            )
+
+        run_solv = mda.Universe(solv_tpr_path, solv_xtc_path)
+
+        atoms = run_solv.atoms
+
+
+        if atoms.n_atoms == 0:
+            raise ValueError("Solvent Universe contains no atoms.")
+
+        if not hasattr(atoms, "charges"):
+            raise AttributeError("Solvent atoms do not have charges.")
+
+        # ---------- volume ----------
+        run_solv.trajectory[run_start]
+
+        V_solv_m3 = (run_solv.trajectory.ts.volume * 1e-30)
+
+        # ---------- corrected solvent permittivity ----------
+        eps_solv = permittivity_corr(
+            start=run_start,
+            end=run_end,
+            run=run_solv,
+            temperature=self.temp,
+            volume_m3=V_solv_m3,
+            cip_dipoles_by_frame=None,
+        )
+
+        return eps_solv
+
+    def permittivity_sol(
+        self,
+        run_start: int,
+        run_end: int,
+        eps_solv: float | None = None,
+    ):
+
+        # ---------- require solvent permittivity ----------
+        if eps_solv is None:
+            raise ValueError(
+                "eps_solv must be provided to calculate the solution "
+                "permittivity. Calculate it first using "
+                "permittivity_solv(...), or provide a previously "
+                "calculated value."
+            )
+
+        eps_solv = float(eps_solv)
+
+        if eps_solv <= 1.0:
+            raise ValueError(
+                f"eps_solv must be larger than 1. "
+                f"Received: {eps_solv}"
+            )
+
+        print(
+            f"Solvent permittivity used for the CIP correction: "
+            f"{eps_solv:.4f}"
+        )
+
+        # ---------- solution trajectory ----------
+        run_wrap = self.run_wrap
+        V_m3 = self.V_m3
+
+        atoms = run_wrap.atoms
+
+        if atoms.n_atoms == 0:
+            raise ValueError(
+                "Solution Universe contains no atoms."
+            )
+
+        if not hasattr(atoms, "charges"):
+            raise AttributeError(
+                "Solution atoms do not have charges."
+            )
+
+        # ==========================================================
+        # Determine CIP cutoff
+        # ==========================================================
+        resnames = np.unique(atoms.resnames)
+
+        cation_key = self.get_mol_selection_key(self.cation_name)
+        anion_key = self.get_mol_selection_key(self.anion_name)
+
+        print(f"Cation selection: {cation_key}")
+        print(f"Anion selection: {anion_key}")
+    
+        r_cut = self.determine_cip_cutoff(
+            resnames=resnames,
+            cation_key=cation_key,
+            anion_key=anion_key,
+        )   
+
+        print(f"Determined CIP cutoff distance: {r_cut:.4f} Å")
+
+        r_cut = 6.0
+     
+        # ==========================================================
+        # Find CIPs
+        # ==========================================================
+        cip_inf = cip_finder(
+            start=run_start,
+            end=run_end,
+            run=run_wrap,
+            cation=self.cation_name,
+            anion=self.anion_name,
+            r_cut=r_cut,
+        )
+
+        # ==========================================================
+        # Calculate xi-corrected CIP dipoles
+        # ==========================================================
+        corr_Mcip = corrected_cip_dipoles(
+            start=run_start,
+            end=run_end,
+            cip_array=cip_inf,
+            anion=self.anion_name,
+            eps_solv=eps_solv,
+            q_scale=self.q_eff,
+        )
+        
+        # ==========================================================
+        # Calculate solution permittivity
+        #npj Comput Mater 9, 175 (2023)
+        # M_sol =
+        #     M_solv(alpha-corrected)
+        #     +
+        #     M_CIP(xi-corrected)
+        # ==========================================================
+        eps_sol = permittivity_corr(
+            start=run_start,
+            end=run_end,
+            run=run_wrap,
+            temperature=self.temp,
+            volume_m3=V_m3,
+            cip_dipoles_by_frame=corr_Mcip,
+            eps_solv_reference=eps_solv,
+            print_decomposition=True,
+        )
+
+        return eps_sol
+    
+    def get_solvent_selections(
+        self,
+        resnames,
+    ):
+
+        solvent_selections = {}
+
+        for res in resnames:
+
+            # Skip cation/anion residues
+            if (
+                res in self.cation_name
+                or res in self.anion_name
+            ):
+                continue
+
+            # Find corresponding MOL_SELECTION key
+            for key, selection in MOL_SELECTION.items():
+
+                if f"resname {res}" in selection:
+
+                    solvent_selections[res] = key
+                    break
+
+        return solvent_selections
+
+    def get_mol_selection_key(
+        self,
+        selection_string,
+    ):
+
+        for key, value in MOL_SELECTION.items():
+
+            if value == selection_string:
+                return key
+
+        raise ValueError(
+            f"No MOL_SELECTION key found for:"
+            f" {selection_string}"
+        )
+
+    def determine_cip_cutoff(
+        self,
+        resnames,
+        cation_key,
+        anion_key,
+    ):
+
+        # ---------- cation-anion distance ----------
+        x_cat_an, _ = self.coordination_number(
+            cation_key,
+            anion_key,
+            write_files=False,
+        )
+        print(f"Cation-anion distance: {x_cat_an:.4f} Å")
+        # ---------- cation-solvent distances ----------
+        solvent_selections = self.get_solvent_selections(
+            resnames
+        )
+
+        solvent_distances = {}
+
+        for res, solvent_key in solvent_selections.items():
+
+            x_solv, _ = self.coordination_number(
+                cation_key,
+                solvent_key,
+                write_files=False,
+            )
+
+            print(f"Cation-{solvent_key} distance: {x_solv:.4f} Å")
+            solvent_distances[solvent_key] = x_solv
+
+        # ---------- select cutoff ----------
+        larger_solvents = {
+            solvent_key: dist
+            for solvent_key, dist in solvent_distances.items()
+            if dist > x_cat_an
+        }
+
+        if larger_solvents:
+
+            largest_solvent = max(
+                larger_solvents,
+                key=larger_solvents.get,
+            )
+
+            r_cut = larger_solvents[largest_solvent]
+
+        else:
+            r_cut = x_cat_an
+
+        return r_cut
+
 # ========================= Activity =========================
     def activity(
         self,        
@@ -506,148 +762,13 @@ class TrajAnalysis:
   
         return gamma_DH, gamma_B, gamma_DH_B
 
-    def permittivity(
-        self,
-        run_start: int,
-        run_end: int,
-        trajdir: str | None = None,
-    ):
 
-        # ---------- resolve universe ----------
-        if trajdir is None or trajdir == self.workdir:
-            run_wrap = self.run_wrap
-            V_m3 = self.V_m3
-        else:
-            solv_tpr_path = os.path.join(trajdir, "nvt_prod_wrap.tpr")
-            solv_xtc_path = os.path.join(trajdir, "nvt_prod_wrap.xtc")
 
-            if not os.path.isfile(solv_tpr_path):
-                raise FileNotFoundError(
-                    f"nvt_prod_wrap.tpr not found in folder: {trajdir}"
-                )
 
-            if not os.path.isfile(solv_xtc_path):
-                raise FileNotFoundError(
-                    f"nvt_prod_wrap.xtc not found in folder: {trajdir}"
-                )
 
-            run_wrap = mda.Universe(solv_tpr_path, solv_xtc_path)
-            V_m3 = run_wrap.coord.volume * 1e-30
 
-        atoms = run_wrap.atoms
 
-        if atoms.n_atoms == 0:
-            raise ValueError("Universe contains no atoms.")
 
-        if not hasattr(atoms, "charges"):
-            raise AttributeError(
-                "Atoms do not have charges."
-            )
-        
-        resnames = np.unique(atoms.resnames)
-
-        cation_key = self.get_mol_selection_key(self.cation_name)
-        anion_key = self.get_mol_selection_key(self.anion_name)
-
-        print(f"cation selection: {cation_key}")
-        print(f"anion selection: {anion_key}")
-
-        x_cat_an, y_cat_an = self.coordination_number(
-        cation_key,
-        anion_key,
-        write_files=False,
-        )
-
-        solvent_selections = self.get_solvent_selections(resnames)        
-        solvent_distances = {}        
-
-        for res, solvent_key in solvent_selections.items():
-
-            x_solv, y_solv = self.coordination_number(
-                cation_key,
-                solvent_key,
-                write_files=False,
-            )
-
-            solvent_distances[solvent_key] = x_solv
-
-        larger_solvents = {
-            res: dist
-            for res, dist in solvent_distances.items()
-            if dist > x_cat_an
-        }
-
-        if larger_solvents:
-            largest_res = max(
-                larger_solvents,
-                key=larger_solvents.get
-            )
-            r_cut = larger_solvents[largest_res]
-        else:
-            r_cut = x_cat_an
-        
-
-        cip_array = cip_finder(
-            start=run_start,
-            end=run_end, 
-            run=run_wrap,
-            cation=self.cation_name,
-            anion=self.anion_name,
-            r_cut=r_cut
-        ) 
-
-        eps_corrected = permittivity_corr(
-            start=run_start,
-            end=run_end, 
-            run=run_wrap,
-            cation=self.cation_name,
-            anion=self.anion_name,
-            temperature=self.temp,
-            volume_m3=V_m3
-        )
-
-        return eps_corrected    
-
-    def get_solvent_selections(
-        self,
-        resnames,
-    ):
-
-        solvent_selections = {}
-
-        for res in resnames:
-
-            # Skip cation/anion residues
-            if (
-                res in self.cation_name
-                or res in self.anion_name
-            ):
-                continue
-
-            # Find corresponding MOL_SELECTION key
-            for key, selection in MOL_SELECTION.items():
-
-                if f"resname {res}" in selection:
-
-                    solvent_selections[res] = key
-                    break
-
-        return solvent_selections
-
-    def get_mol_selection_key(
-        self,
-        selection_string,
-    ):
-
-        for key, value in MOL_SELECTION.items():
-
-            if value == selection_string:
-                return key
-
-        raise ValueError(
-            f"No MOL_SELECTION key found for:"
-            f" {selection_string}"
-        )
 
 
 

@@ -140,17 +140,40 @@ analysis = TrajAnalysis(
     q_eff=args.charge_scale,
 )
 
+print("\n===== Calculating permittivity =====")
+epsilon_sol = analysis.permittivity_sol(
+    run_start = 26000, 
+    run_end = 30000,
+    eps_solv = 7.2120,
+)
+print(f"Dielectric constant = {epsilon_sol:.4f}\n")
+
+"""
+epsilon_sol = analysis.permittivity_sol(
+    run_start = 27000, 
+    run_end = 30000,
+    eps_solv = 7.2700,
+)
+print(f"Dielectric constant solution = {epsilon_sol:.4f}\n")
+
 
 print("\n===== Calculating permittivity =====")
-epsilon = analysis.permittivity(
-    run_start = 29990, 
-    run_end = 30000,
-    trajdir = args.workdir,
-)
+epsilon = analysis.permittivity_solv(
+    run_start = 17000, 
+    run_end = 20000,
+    trajdir="./1MLiClO4_DMC_T298K/DMC/",
+    )
 print(f"Dielectric constant = {epsilon:.4f}\n")
 
 
-"""
+print("\n===== Calculating permittivity =====")
+epsilon = analysis.permittivity(
+    run_start = 27000, 
+    run_end = 30000,
+    trajdir = "1MLiClO4_DMC_T298K/DMC",
+)
+print(f"Dielectric constant = {epsilon:.4f}\n")
+
 print("\n===== Calculating conductivity =====")
 cond, err = analysis.conductivity_split()
 print(f"Ionic conductivity = {cond:.4f} ± {err:.4f} mS/cm\n")
