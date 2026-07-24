@@ -3,11 +3,12 @@
 
 python lelib_mdlab.py \
   -box 50.0 \
-  -anion_name PF6 \
-  -salt-conc 1.0 \
-  -workdir sigma_segments \
-  -solvents EC EMC \
-  -solvent-fracs 0.5 0.5 \
-  -charge-scale 0.85 \
-  -temperature 300 \
+  -anion_name TFSI \
+  -salt-conc 0.5 \
+  -workdir 0p5MLiTFSI_DME_298K \
+  -solvents DME \
+  -solvent-fracs 1.0 \
+  -charge-scale 0.80 \
+  -temperature 298 \
   > output_LELiB_MDLab.txt
+
