@@ -33,7 +33,8 @@ from LELiBMDLab.tools.coordination import (
 
 from LELiBMDLab.tools.activity import (
     born_radius,
-    calc_activity    
+    calc_activity,
+    calc_thermodynamic_factor    
 )
 
 from LELiBMDLab.tools.permittivity import (
@@ -109,7 +110,9 @@ class TrajAnalysis:
   
         rho_kg_m3 = m_total_kg / self.V_m3
         rho_g_cm3 = rho_kg_m3 * 1e-3
-        print(f"Density: {rho_g_cm3:.4f} g·cm^-3")
+
+        print(f"Volume: {self.V_m3 * 1e6:.4e} cm^3")
+        print(f"Density: {rho_g_cm3:.4f} g/cm^3")
 
         vsol_L = self.volume * 1e-27
 
@@ -117,11 +120,11 @@ class TrajAnalysis:
 
         # molarity
         c_m = n_cation / vsol_L
-        print(f"Concentration: {c_m:.2f} mol L^-1")
+        print(f"Molarity: {c_m:.4f} mol/L")
 
         # molality (correct)
         b_m = n_cation / m_solvent_kg
-        print(f"Molality: {b_m:.2f} mol kg^-1")
+        print(f"Molality: {b_m:.4f} mol/kg")
 
 # ========================= conductivity =========================
     def conductivity_split(self, window_ps: float = 6000, return_all: bool = False):
@@ -160,7 +163,7 @@ class TrajAnalysis:
                 interval_time=100,
                 step_size=4
             )
-            print(f'Slope for window {idx}: {slope}')
+            #print(f'Slope for window {idx}: {slope:4f}')
             sigma_val = self.calc_conductivity(
                 slope,
                 self.volume,
@@ -184,17 +187,12 @@ class TrajAnalysis:
         std = np.std(values, ddof=1)
         stderr = std / np.sqrt(values.size)
 
-        print("--- summary ---")
-        print(f"values = {values}")
-        print(f"mean   = {mean:.4f}")
-        print(f"std = {std:.4f}")
-
         if return_all:
-            return mean, std, values, time_windows
+            return mean, stderr, values, time_windows
         else:
-            return mean, std
+            return mean, stderr
 
-    def transfer_number_split(self, window_ps: float = 6000):
+    def transfer_number_split(self, window_ps: float = 6000, onsager_coef: bool = False ):
         ps_per_frame = self.dt * self.dt_collection
         frames_per_window = int(window_ps / ps_per_frame)
         total_windows = self.num_frames // frames_per_window
@@ -257,8 +255,9 @@ class TrajAnalysis:
 
         slope_plusplus_values = np.array(slope_plusplus_values, dtype=float)
         slope_minusminus_values = np.array(slope_minusminus_values, dtype=float)
+        sigmas = np.asarray(sigmas, dtype=float)
 
-        t_values = self.calc_transfer_number(
+        t_values, slope_plusminus_values = self.calc_transfer_number(
             slope_plusplus_values,
             slope_minusminus_values,
             self.temp,
@@ -267,16 +266,17 @@ class TrajAnalysis:
             self.q_eff
         )
 
+        t_values = np.asarray(t_values, dtype=float)
+        slope_plusminus_values = np.asarray(slope_plusminus_values, dtype=float)
+
         mean = np.mean(t_values)
         std = np.std(t_values, ddof=1)
         stderr = std / np.sqrt(len(t_values))
-
-        print("--- summary ---")
-        print(f"values = {t_values}")
-        print(f"mean   = {mean:.4f}")
-        print(f"std = {std:.4f}")
-
-        return mean, std
+        
+        if onsager_coef:
+            return mean, stderr, slope_plusplus_values, slope_minusminus_values, slope_plusminus_values
+        else:
+            return mean, stderr
 
     def calc_conductivity(self, slope, v, T, q_eff):
         convert = const.e2c * const.e2c / const.ps2s / const.A2cm * 1000
@@ -288,11 +288,33 @@ class TrajAnalysis:
     def calc_transfer_number(self, slope_plusplus, slope_minusminus, T, v, sigma, q_eff):
         convert = const.e2c * const.e2c / const.ps2s / const.A2cm * 1000
 
-        slope_plusminus = (sigma / convert * 6 * const.kB * T * v / q_eff**2 - slope_plusplus - slope_minusminus) / -2
+        # Recover the unweighted total collective MSD slope.
+        slope_total = (
+            sigma
+            / convert
+            * 6.0
+            * const.kB
+            * T
+            * v
+            / q_eff**2
+        )
 
-        t = (slope_plusplus - slope_plusminus) / (slope_plusplus + slope_minusminus - 2 * slope_plusminus)   # mS/cm
+        # slope_total = slope++ + slope-- - 2 slope+-
+        slope_plusminus = (
+            slope_total
+            - slope_plusplus
+            - slope_minusminus
+        ) / -2.0
 
-        return t
+        t = (
+            slope_plusplus - slope_plusminus
+        ) / (
+            slope_plusplus
+            + slope_minusminus
+            - 2.0 * slope_plusminus
+        )
+
+        return t,  slope_plusminus
     
 # ========================= Coordination ========================= 
 
@@ -336,9 +358,9 @@ class TrajAnalysis:
                 filename=f"rdf_coordination_{tag}.png"
             )
 
-        x_val, y_coord = obtain_rdf_coord(bins, rdf, coord_number)
+        x_val, y_coord, peak_position = obtain_rdf_coord(bins, rdf, coord_number)
 
-        return x_val, y_coord
+        return x_val, y_coord, peak_position
 
     def get_rdf_coordination_array(self, group1_name, group2_name):
         group1 = self.run_wrap.select_atoms(group1_name)
@@ -359,7 +381,7 @@ class TrajAnalysis:
             return selection.split()[idx + 1]
         raise ValueError(f"Cannot extract resname from '{selection}'")
     
-    def coordination_type(
+    def coordination_classification(
         self,
         run_start: int,
         run_end: int,
@@ -423,12 +445,25 @@ class TrajAnalysis:
 # ========================= Permittivity =========================
     def permittivity_solv(
         self,
-        run_start: int,
-        run_end: int,
         trajdir: str,
+        start_ps: float = 12000,
+        end_ps: float = 30000,
     ):
+        """Calculate solvent permittivity over one trajectory interval."""
+        start_ps = float(start_ps)
+        end_ps = float(end_ps)
 
-        # ---------- solvent trajectory ----------
+        if not np.isfinite(start_ps) or start_ps < 0:
+            raise ValueError(
+                "start_ps must be finite and non-negative. "
+                f"Received: {start_ps}"
+            )
+        if not np.isfinite(end_ps) or end_ps <= start_ps:
+            raise ValueError(
+                "end_ps must be finite and greater than start_ps. "
+                f"Received start_ps={start_ps}, end_ps={end_ps}"
+            )
+
         solv_tpr_path = os.path.join(trajdir, "nvt_prod_wrap.tpr")
         solv_xtc_path = os.path.join(trajdir, "nvt_prod_wrap.xtc")
 
@@ -436,151 +471,244 @@ class TrajAnalysis:
             raise FileNotFoundError(
                 f"nvt_prod_wrap.tpr not found in folder: {trajdir}"
             )
-
         if not os.path.isfile(solv_xtc_path):
             raise FileNotFoundError(
                 f"nvt_prod_wrap.xtc not found in folder: {trajdir}"
             )
 
         run_solv = mda.Universe(solv_tpr_path, solv_xtc_path)
-
         atoms = run_solv.atoms
-
 
         if atoms.n_atoms == 0:
             raise ValueError("Solvent Universe contains no atoms.")
-
         if not hasattr(atoms, "charges"):
             raise AttributeError("Solvent atoms do not have charges.")
 
-        # ---------- volume ----------
-        run_solv.trajectory[run_start]
+        total_frames = len(run_solv.trajectory)
+        if total_frames == 0:
+            raise ValueError("Solvent trajectory contains no frames.")
 
-        V_solv_m3 = (run_solv.trajectory.ts.volume * 1e-30)
+        ps_per_frame = float(run_solv.trajectory.dt)
+        if not np.isfinite(ps_per_frame) or ps_per_frame <= 0:
+            raise ValueError(
+                "Could not determine a valid time interval between solvent "
+                f"trajectory frames: {ps_per_frame}"
+            )
 
-        # ---------- corrected solvent permittivity ----------
-        eps_solv = permittivity_corr(
-            start=run_start,
-            end=run_end,
-            run=run_solv,
-            temperature=self.temp,
-            volume_m3=V_solv_m3,
-            cip_dipoles_by_frame=None,
+        run_solv.trajectory[0]
+        first_time_ps = float(run_solv.trajectory.ts.time)
+        if not np.isfinite(first_time_ps):
+            raise ValueError(
+                f"Invalid time for first trajectory frame: {first_time_ps}"
+            )
+
+        frame_times_ps = (
+            first_time_ps
+            + np.arange(total_frames, dtype=float) * ps_per_frame
         )
+        start_frame = int(
+            np.searchsorted(frame_times_ps, start_ps, side="left")
+        )
+        end_frame = int(
+            np.searchsorted(frame_times_ps, end_ps, side="left")
+        )
+
+        if start_frame >= total_frames:
+            raise ValueError(
+                f"start_ps={start_ps:.2f} ps lies outside the trajectory; "
+                f"the last frame is at approximately "
+                f"{frame_times_ps[-1]:.2f} ps."
+            )
+        if end_frame > total_frames or (
+            end_frame == total_frames and end_ps > frame_times_ps[-1] + ps_per_frame
+        ):
+            raise ValueError(
+                f"end_ps={end_ps:.2f} ps lies outside the trajectory; "
+                f"the available half-open interval ends at approximately "
+                f"{frame_times_ps[-1] + ps_per_frame:.2f} ps."
+            )
+        if end_frame <= start_frame:
+            raise ValueError(
+                "The requested interval contains no stored frames: "
+                f"[{start_ps:.2f}, {end_ps:.2f}) ps."
+            )
+
+        actual_start_ps = frame_times_ps[start_frame]
+        actual_end_ps = (
+            frame_times_ps[end_frame]
+            if end_frame < total_frames
+            else frame_times_ps[-1] + ps_per_frame
+        )
+
+        run_solv.trajectory[start_frame]
+        volume_solv_m3 = float(run_solv.trajectory.ts.volume) * 1e-30
+        if not np.isfinite(volume_solv_m3) or volume_solv_m3 <= 0:
+            raise ValueError(f"Invalid solvent volume: {volume_solv_m3} m³")
+
+        eps_solv = float(
+            permittivity_corr(
+                start=start_frame,
+                end=end_frame,
+                run=run_solv,
+                temperature=self.temp,
+                volume_m3=volume_solv_m3,
+                cip_dipoles_by_frame=None,
+            )
+        )
+        if not np.isfinite(eps_solv):
+            raise ValueError(
+                f"Calculated solvent permittivity is not finite: {eps_solv}"
+            )
 
         return eps_solv
 
     def permittivity_sol(
         self,
-        run_start: int,
-        run_end: int,
         eps_solv: float | None = None,
+        start_ps: float = 12000,
+        end_ps: float = 30000,
     ):
-
-        # ---------- require solvent permittivity ----------
+        """Calculate solution permittivity over one trajectory interval."""
         if eps_solv is None:
             raise ValueError(
-                "eps_solv must be provided to calculate the solution "
-                "permittivity. Calculate it first using "
-                "permittivity_solv(...), or provide a previously "
-                "calculated value."
+                "eps_solv must be provided. Calculate it first with "
+                "permittivity_solv(...), or provide a previously calculated "
+                "value."
             )
 
         eps_solv = float(eps_solv)
+        start_ps = float(start_ps)
+        end_ps = float(end_ps)
 
-        if eps_solv <= 1.0:
+        if not np.isfinite(eps_solv) or eps_solv <= 1.0:
             raise ValueError(
-                f"eps_solv must be larger than 1. "
+                "eps_solv must be finite and larger than 1. "
                 f"Received: {eps_solv}"
             )
+        if not np.isfinite(start_ps) or start_ps < 0:
+            raise ValueError(
+                "start_ps must be finite and non-negative. "
+                f"Received: {start_ps}"
+            )
+        if not np.isfinite(end_ps) or end_ps <= start_ps:
+            raise ValueError(
+                "end_ps must be finite and greater than start_ps. "
+                f"Received start_ps={start_ps}, end_ps={end_ps}"
+            )
 
-        print(
-            f"Solvent permittivity used for the CIP correction: "
-            f"{eps_solv:.4f}"
+        run_wrap = self.run_wrap
+        total_frames = len(run_wrap.trajectory)
+        if total_frames == 0:
+            raise ValueError("Solution trajectory contains no frames.")
+
+        ps_per_frame = float(run_wrap.trajectory.dt)
+        if not np.isfinite(ps_per_frame) or ps_per_frame <= 0:
+            ps_per_frame = float(self.dt * self.dt_collection)
+        if not np.isfinite(ps_per_frame) or ps_per_frame <= 0:
+            raise ValueError(
+                "Could not determine a valid time interval between stored "
+                f"frames: {ps_per_frame}"
+            )
+
+        run_wrap.trajectory[0]
+        first_time_ps = float(run_wrap.trajectory.ts.time)
+        if not np.isfinite(first_time_ps):
+            raise ValueError(
+                f"Invalid time for first trajectory frame: {first_time_ps}"
+            )
+
+        frame_times_ps = (
+            first_time_ps
+            + np.arange(total_frames, dtype=float) * ps_per_frame
+        )
+        start_frame = int(
+            np.searchsorted(frame_times_ps, start_ps, side="left")
+        )
+        end_frame = int(
+            np.searchsorted(frame_times_ps, end_ps, side="left")
         )
 
-        # ---------- solution trajectory ----------
-        run_wrap = self.run_wrap
-        V_m3 = self.V_m3
+        if start_frame >= total_frames:
+            raise ValueError(
+                f"start_ps={start_ps:.2f} ps lies outside the trajectory; "
+                f"the last frame is at approximately "
+                f"{frame_times_ps[-1]:.2f} ps."
+            )
+        if end_frame > total_frames or (
+            end_frame == total_frames and end_ps > frame_times_ps[-1] + ps_per_frame
+        ):
+            raise ValueError(
+                f"end_ps={end_ps:.2f} ps lies outside the trajectory; "
+                f"the available half-open interval ends at approximately "
+                f"{frame_times_ps[-1] + ps_per_frame:.2f} ps."
+            )
+        if end_frame <= start_frame:
+            raise ValueError(
+                "The requested interval contains no stored frames: "
+                f"[{start_ps:.2f}, {end_ps:.2f}) ps."
+            )
+
+        actual_start_ps = frame_times_ps[start_frame]
+        actual_end_ps = (
+            frame_times_ps[end_frame]
+            if end_frame < total_frames
+            else frame_times_ps[-1] + ps_per_frame
+        )
 
         atoms = run_wrap.atoms
-
         if atoms.n_atoms == 0:
-            raise ValueError(
-                "Solution Universe contains no atoms."
-            )
-
+            raise ValueError("Solution Universe contains no atoms.")
         if not hasattr(atoms, "charges"):
-            raise AttributeError(
-                "Solution atoms do not have charges."
-            )
-
-        # ==========================================================
-        # Determine CIP cutoff
-        # ==========================================================
-        resnames = np.unique(atoms.resnames)
+            raise AttributeError("Solution atoms do not have charges.")
 
         cation_key = self.get_mol_selection_key(self.cation_name)
         anion_key = self.get_mol_selection_key(self.anion_name)
-
-        print(f"Cation selection: {cation_key}")
-        print(f"Anion selection: {anion_key}")
-    
         r_cut = self.determine_cip_cutoff(
-            resnames=resnames,
+            resnames=np.unique(atoms.resnames),
             cation_key=cation_key,
             anion_key=anion_key,
-        )   
+        )
 
+        print(f"Solvent permittivity used for correction: {eps_solv:.4f}")
+        print(f"Cation selection: {cation_key}")
+        print(f"Anion selection: {anion_key}")
         print(f"Determined CIP cutoff distance: {r_cut:.4f} Å")
 
-        r_cut = 6.0
-     
-        # ==========================================================
-        # Find CIPs
-        # ==========================================================
         cip_inf = cip_finder(
-            start=run_start,
-            end=run_end,
+            start=start_frame,
+            end=end_frame,
             run=run_wrap,
             cation=self.cation_name,
             anion=self.anion_name,
             r_cut=r_cut,
         )
-
-        # ==========================================================
-        # Calculate xi-corrected CIP dipoles
-        # ==========================================================
         corr_Mcip = corrected_cip_dipoles(
-            start=run_start,
-            end=run_end,
+            start=start_frame,
+            end=end_frame,
             cip_array=cip_inf,
             anion=self.anion_name,
             eps_solv=eps_solv,
             q_scale=self.q_eff,
         )
-        
-        # ==========================================================
-        # Calculate solution permittivity
-        #npj Comput Mater 9, 175 (2023)
-        # M_sol =
-        #     M_solv(alpha-corrected)
-        #     +
-        #     M_CIP(xi-corrected)
-        # ==========================================================
-        eps_sol = permittivity_corr(
-            start=run_start,
-            end=run_end,
-            run=run_wrap,
-            temperature=self.temp,
-            volume_m3=V_m3,
-            cip_dipoles_by_frame=corr_Mcip,
-            eps_solv_reference=eps_solv,
-            print_decomposition=True,
+        eps_sol = float(
+            permittivity_corr(
+                start=start_frame,
+                end=end_frame,
+                run=run_wrap,
+                temperature=self.temp,
+                volume_m3=self.V_m3,
+                cip_dipoles_by_frame=corr_Mcip,
+                eps_solv_reference=eps_solv,
+                print_decomposition=True,
+            )
         )
+        if not np.isfinite(eps_sol):
+            raise ValueError(
+                f"Calculated solution permittivity is not finite: {eps_sol}"
+            )
 
         return eps_sol
-    
+
     def get_solvent_selections(
         self,
         resnames,
@@ -637,141 +765,231 @@ class TrajAnalysis:
         )
         print(f"Cation-anion distance: {x_cat_an:.4f} Å")
         # ---------- cation-solvent distances ----------
-        solvent_selections = self.get_solvent_selections(
-            resnames
-        )
 
-        solvent_distances = {}
-
-        for res, solvent_key in solvent_selections.items():
-
-            x_solv, _ = self.coordination_number(
-                cation_key,
-                solvent_key,
-                write_files=False,
-            )
-
-            print(f"Cation-{solvent_key} distance: {x_solv:.4f} Å")
-            solvent_distances[solvent_key] = x_solv
-
-        # ---------- select cutoff ----------
-        larger_solvents = {
-            solvent_key: dist
-            for solvent_key, dist in solvent_distances.items()
-            if dist > x_cat_an
-        }
-
-        if larger_solvents:
-
-            largest_solvent = max(
-                larger_solvents,
-                key=larger_solvents.get,
-            )
-
-            r_cut = larger_solvents[largest_solvent]
-
-        else:
-            r_cut = x_cat_an
+        r_cut = x_cat_an
 
         return r_cut
 
 # ========================= Activity =========================
     def activity(
-        self,        
-        run_start: int,
-        run_end: int,
-        solv_dir: str
+        self,
+        c_molar: float,
+        eps_solv: float,
+        eps_sol: float,
     ):
-        if solv_dir is None:
-            raise ValueError("solv_dir must be provided")
-        
-        if os.path.abspath(solv_dir) == os.path.abspath(self.workdir):
-            raise ValueError("solv_dir must be different from self.workdir")
+        """
+        Calculate the Debye-Hückel, Born, and combined mean activity
+        coefficients for a 1:1 electrolyte.
+
+        Parameters
+        ----------
+        c_molar
+            Salt concentration in mol L^-1.
+        eps_solv
+            Dielectric constant of the pure solvent.
+        eps_sol
+            Dielectric constant of the electrolyte solution.
+        """
 
         SELECTION_TO_ION = {
-        "resname LIP and name LI": 0.60,
-        "resname _PF and name P1": 2.42,   # PF6-
-        "resname TFS and name N1": 3.26,   # TFSI-
-        "resname FSI and name N2": 2.90,   # FSI-
-        "resname _BF and name B1": 2.30,   # BF4-
-        "resname ClO and name Cl": 2.25    # ClO4-
+            "resname LIP and name LI": 0.60,
+            "resname _PF and name P1": 2.42,  # PF6-
+            "resname TFS and name N1": 3.26,  # TFSI-
+            "resname FSI and name N2": 2.90,  # FSI-
+            "resname _BF and name B1": 2.30,  # BF4-
+            "resname ClO and name Cl": 2.25,  # ClO4-
         }
 
-        # ---------- ion-size parameter ----------
+        # ---------- Ion-size parameter ----------
         try:
             cation_ion = SELECTION_TO_ION[self.cation_name]
             anion_ion = SELECTION_TO_ION[self.anion_name]
-        except KeyError as e:
-            raise ValueError(f"Unknown ion: {e}")
-        
-        a = (cation_ion + anion_ion) * 1e-10
-        """
-        eps_sol = self.permittivity(
-            run_start,
-            run_end,
-            temperature=self.temp,
-            trajdir=self.workdir,
-        )
+        except KeyError as exc:
+            raise ValueError(f"Unknown ion: {exc}") from exc
 
-        """
+        # Angstrom -> m
+        a = (cation_ion + anion_ion) * 1.0e-10
 
-        eps_solv = self.permittivity(
-            run_start,
-            run_end,
-            trajdir=solv_dir
-        )
-
-
-        #eps_solv = 3.1075 
-
-        eps_sol = 5.3375 
-        
-
-        solv_tpr_path = os.path.join(solv_dir, "nvt_prod_wrap.tpr")
-        solv_xtc_path = os.path.join(solv_dir, "nvt_prod_wrap.xtc")
-
-        solv_wrap = mda.Universe(solv_tpr_path, solv_xtc_path)
-        
-        m_solv_kg = solv_wrap.atoms.masses.sum() * const.AMU_TO_KG
-        rho_solv = m_solv_kg / self.V_m3 
-
-        n_salt = self.num_cation / const.NA
-
-        c = n_salt / m_solv_kg        
-       
-        Rb_plus, Rb_minus = born_radius(self.cation_name, self.anion_name, eps_solv)
-        
-        gamma_DH, gamma_B, gamma_DH_B = calc_activity(
-            c,
-            rho_solv,
+        Rb_plus, Rb_minus = born_radius(
+            self.cation_name,
+            self.anion_name,
             eps_solv,
-            eps_sol,
+        )
+
+        gamma_DH, gamma_B, gamma_DH_B = calc_activity(
+            c=c_molar,  # mol L^-1
+            eps_solv=eps_solv,
+            eps_sol=eps_sol,
             temp=self.temp,
             a=a,
             R_plus=Rb_plus,
             R_minus=Rb_minus,
         )
 
-        print(f"Concentration (mol kg^-1): {c:.4f}")
-        print(f"rho solvent (kg m^-3): {rho_solv:.2f}")
-        print(f"Dielectric constant solvent: {eps_solv:.2f}")
-        print(f"Dielectric constant solution: {eps_sol:.2f}")
-        print(f"Ion-size parameter a (m): {a:.2e}")
-        print(f"Born radius cation Rb+ (m): {Rb_plus:.2e}")
-        print(f"Born radius anion Rb- (m): {Rb_minus:.2e}")
-  
         return gamma_DH, gamma_B, gamma_DH_B
 
+    def thermodynamic_factor(
+        self,
+        c_values,
+        activity_coefficients_file,
+        print_details=False,
+    ):
+        return calc_thermodynamic_factor(
+            c_values=c_values,
+            activity_coefficients_file=activity_coefficients_file,
+            print_details=print_details,
+        )
 
+# ========================= Salt Diffusivity =========================
+    def salt_diffusivity_split(self, xi: float, window_ps: float = 6000):
+        (
+            _,
+            _,
+            slope_plusplus_values,
+            slope_minusminus_values,
+            slope_plusminus_values,
+        ) = self.transfer_number_split(
+            window_ps=window_ps,
+            onsager_coef=True,
+        )
 
+        D_salt_values = self.calc_salt_diffusivity(
+            slope_plusplus_values,
+            slope_minusminus_values,
+            slope_plusminus_values,
+            self.temp,
+            xi,
+        )
 
+        D_salt_values = np.asarray(D_salt_values, dtype=float)
 
+        if D_salt_values.size < 2:
+            raise ValueError("Need at least two values to estimate error")
 
+        mean = np.mean(D_salt_values)
+        std = np.std(D_salt_values, ddof=1)
+        stderr = std / np.sqrt(D_salt_values.size)
 
+        print("--- salt diffusivity summary ---")
+        print(f"ξ      = {xi:.4e}")
+        print(f"values = {D_salt_values} cm² s⁻¹")
+        print(f"mean   = {mean:.4e} cm² s⁻¹")
+        print(f"std    = {std:.4e} cm² s⁻¹")
+        print(f"stderr = {stderr:.4e} cm² s⁻¹")
 
+        return mean, stderr
 
+    def calc_salt_diffusivity(
+        self,
+        slope_plusplus,
+        slope_minusminus,
+        slope_plusminus,
+        T,
+        xi,
+    ):
+        slope_plusplus = np.asarray(slope_plusplus, dtype=float)
+        slope_minusminus = np.asarray(slope_minusminus, dtype=float)
+        slope_plusminus = np.asarray(slope_plusminus, dtype=float)
 
+        z_plus = self.q_eff
+        z_minus = -self.q_eff
 
+        nu_plus = 1
+        nu_minus = 1
+        nu = nu_plus + nu_minus
+
+        # Number of salt formula units calculated independently
+        # from the cation and anion counts.
+        num_salt_plus = self.num_cation / nu_plus
+        num_salt_minus = self.num_anion / nu_minus
+
+        if not np.isclose(num_salt_plus, num_salt_minus):
+            raise ValueError(
+                "Cation and anion counts are inconsistent with "
+                f"stoichiometry ν+={nu_plus}, ν-={nu_minus}"
+            )
+
+        num_salt = 0.5 * (num_salt_plus + num_salt_minus)
+
+        # Angstrom² ps⁻¹ -> m² s⁻¹
+        slope_plusplus = (
+            slope_plusplus * 1.0e-20 / const.ps2s
+        )
+        slope_minusminus = (
+            slope_minusminus * 1.0e-20 / const.ps2s
+        )
+        slope_plusminus = (
+            slope_plusminus * 1.0e-20 / const.ps2s
+        )
+
+        volume_m3 = self.V_m3
+
+        # Molar Onsager coefficients
+        denominator_L = (
+            6.0
+            * const.kB
+            * T
+            * volume_m3
+            * const.NA**2
+        )
+
+        L_plusplus = slope_plusplus / denominator_L
+        L_minusminus = slope_minusminus / denominator_L
+        L_plusminus = slope_plusminus / denominator_L
+
+        print(f"L++ = {L_plusplus}")
+        print(f"L-- = {L_minusminus}")
+        print(f"L+- = {L_plusminus}")
+
+        # Salt concentration in mol m⁻³
+        c = (num_salt / const.NA) / volume_m3
+        R = const.NA * const.kB
+
+        determinant = (
+            L_plusplus * L_minusminus
+            - L_plusminus**2
+        )
+
+        numerator = (
+            -z_plus
+            * z_minus
+            * determinant
+        )
+
+        denominator = (
+            z_plus**2 * L_plusplus
+            + z_minus**2 * L_minusminus
+            + 2.0 * z_plus * z_minus * L_plusminus
+        )
+
+        #if np.any(denominator <= 0.0):
+        #    raise ValueError("The Onsager denominator must be positive")
+
+        # Equation 16; initial result in m² s⁻¹
+        D_salt = (
+            nu
+            * R
+            * T
+            * xi
+            / (c * nu_plus * nu_minus)
+            * numerator
+            / denominator
+        )
+
+        # m² s⁻¹ -> cm² s⁻¹
+        D_salt *= 1.0e4
+
+        print(f"z+ = {z_plus}, z- = {z_minus}")
+        print(f"ν+ = {nu_plus}, ν- = {nu_minus}, ν = {nu}")
+        print(
+            f"determinant = {determinant}\n"
+            f"numerator   = {numerator}\n"
+            f"denominator = {denominator}"
+        )
+        print(f"Number of salt formula units = {num_salt:.0f}")
+        print(f"Salt concentration = {c:.4e} mol m⁻³")
+
+        return D_salt
 
 
 

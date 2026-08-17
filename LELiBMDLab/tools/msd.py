@@ -173,6 +173,7 @@ def calc_slope_msd(
     if time_range[0] is None:
         raise ValueError("No valid diffusive region found")
 
+    print(f"Best slope: {best_slope:.4f}")
     # --- final linear fit ---
     start_idx = int(time_range[0] / dt_)
     end_idx = int(time_range[1] / dt_)

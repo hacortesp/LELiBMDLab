@@ -1,8 +1,10 @@
 import argparse
+import numpy as np
 from timeit import default_timer as timer
 from LELiBMDLab.SimulationCell import Builder
 from LELiBMDLab.MDSimulation import MDsim
 from LELiBMDLab.Analysis import TrajAnalysis
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -140,15 +142,112 @@ analysis = TrajAnalysis(
     q_eff=args.charge_scale,
 )
 
+
+print("\n===== Calculating Thermodynamic Factor ====")
+c_values = [
+    0.75,
+    1.0,
+]
+gamma_DH_B_values = [
+    0.792,
+    0.824,
+]
+
+therm_factor = analysis.thermodynamic_factor(
+    c_values = c_values,
+    gamma_values = gamma_DH_B_values,
+)
+
+print(f"xi = {therm_factor[-1]:.4f}")
+xi = therm_factor[-1]
+
+print("\n===== Calculating salt diffusivity =====")
+D_salt_mean, err = analysis.salt_diffusivity_split(
+    xi=xi,
+)
+
+print(
+    f"Results:\n"
+    f"D_salt = {D_salt_mean:.4e} ± "
+    f"{err:.4e} cm^2 s⁻¹\n"
+)
+
+"""
+
+
+print("\n===== Calculating transfer number =====")
+t, err = analysis.transfer_number_split()
+print(f"t+ = {t:.4f}  ± {err:.4f}")
+
+
+print("\n===== Calculating activity =====")
+gamma_DH, gamma_B, gamma_DH_B = analysis.activity(
+    volume_solv = 1.2420e-19, # cm^3, pure-solvent box 
+    rho_solv= 1.0695, # g cm^-3
+    eps_solv = 3.10,
+    eps_sol = 5.53,
+)
+print(
+    f"\nResults:\n"
+    f"γ^DHᴴ   = {gamma_DH:.4e}\n"
+    f"γ^B     = {gamma_B:.4e}\n"
+    f"γ^DH+B  = {gamma_DH_B:.4e}\n"
+)
+
+c_values = [
+    0.5,
+    1.0,
+    1.5,
+]
+gamma_DH_B_values = [
+    0.792,
+    0.824,
+    0.980,
+]
+
+therm_factor = analysis.thermodynamic_factor(
+    c_values=c_values,
+    activity_values=gamma_DH_B_values,
+)
+
+for concentration, gamma, xi in zip(
+    c_values,
+    gamma_DH_B_values,
+    therm_factor,
+):
+    print(
+    f"c = {concentration:.4f} mol/L, "
+    f"γ^DH+B = {gamma:.4e}, "
+    f"ξ = {xi:.4f}"
+    )
+
+
+
+    
+
+print("\n===== Calculating permittivity =====")
+epsilon = analysis.permittivity_solv(
+    run_start = 29900, 
+    run_end = 30000,
+    trajdir="./1MLiClO4_DMC_T298K/DMC/",
+    )
+print(f"Dielectric constant = {epsilon:.4f}\n")
+
+
+
+
+
+
+
+
 print("\n===== Calculating permittivity =====")
 epsilon_sol = analysis.permittivity_sol(
-    run_start = 26000, 
+    run_start = 27000, 
     run_end = 30000,
-    eps_solv = 7.2120,
+    eps_solv = 3.10,
 )
 print(f"Dielectric constant = {epsilon_sol:.4f}\n")
 
-"""
 epsilon_sol = analysis.permittivity_sol(
     run_start = 27000, 
     run_end = 30000,

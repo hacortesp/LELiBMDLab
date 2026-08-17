@@ -15,6 +15,7 @@ from matplotlib.colors import LogNorm
 from matplotlib.patches import Rectangle
 from matplotlib import rc
 
+from scipy.signal import find_peaks
 from matplotlib.colors import LinearSegmentedColormap
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -43,92 +44,73 @@ def calc_rdf_coord(group1, group2, v, nbins=200, range_rdf=(0.0, 10.0)):
 
     return bins, rdf_values, coord_numbers
 
-def obtain_rdf_coord(bins, rdf, coord_numbers):
-    deriv_sign_changes = np.diff(np.sign(np.diff(rdf)))
+def obtain_rdf_coord(
+    bins,
+    rdf,
+    coord_numbers,
+    prominence_threshold=0.5,
+):
 
-    peak_index = np.where(
-        deriv_sign_changes < 0
-    )[0] + 1
-
-    if len(peak_index) == 0:
-        raise ValueError(
-            "No peak found in RDF data."
-        )
-
-    # A maximum is considered a physical peak only when
-    # its difference from the immediately following minimum
-    # is larger than 1.
-    peak_ptr = 0
-
-    while peak_ptr < len(peak_index):
-
-        current_peak_index = peak_index[peak_ptr]
-
-        min_after_peak_index = (
-            np.where(
-                deriv_sign_changes[
-                    current_peak_index:
-                ] > 0
-            )[0]
-            + current_peak_index
-            + 1
-        )
-
-        if len(min_after_peak_index) == 0:
-            peak_ptr += 1
-            continue
-
-        current_min_index = min_after_peak_index[0]
-
-        peak_min_difference = abs(
-            rdf[current_peak_index]
-            - rdf[current_min_index]
-        )
-        """
-        print(
-            f"Peak at {bins[current_peak_index]:.3f} Å, "
-            f"g(r)={rdf[current_peak_index]:.3f}; "
-            f"minimum at {bins[current_min_index]:.3f} Å, "
-            f"g(r)={rdf[current_min_index]:.3f}; "
-            f"difference={peak_min_difference:.3f}"
-        )
-        """
-        if peak_min_difference > 1:
-            break
-
-        peak_ptr += 1
-
-    if peak_ptr >= len(peak_index):
-        raise ValueError(
-            "No physical RDF peak found "
-            "(peak-minimum differences are below threshold)."
-        )
-
-    first_peak_index = peak_index[peak_ptr]
-
-    min_after_peak_index = (
-        np.where(
-            deriv_sign_changes[
-                first_peak_index:
-            ] > 0
-        )[0]
-        + first_peak_index
-        + 1
+    # Find physically significant RDF peaks
+    peak_indices, properties = find_peaks(
+        rdf,
+        prominence=prominence_threshold,
     )
 
-    if len(min_after_peak_index) == 0:
+    if len(peak_indices) == 0:
         raise ValueError(
-            "No minimum found after the first peak "
-            "in RDF data."
+            "No physical RDF peak found "
+            f"(prominence < {prominence_threshold})."
         )
 
-    first_min_index = min_after_peak_index[0]
+    for i, peak_idx in enumerate(peak_indices):
+        prominence = properties["prominences"][i]
+        right_base_idx = properties["right_bases"][i]
+        """
+        print(
+            f"Peak at {bins[peak_idx]:.3f} Å, "
+            f"g(r)={rdf[peak_idx]:.3f}, "
+            f"prominence={prominence:.3f}, "
+            f"right minimum at "
+            f"{bins[right_base_idx]:.3f} Å, "
+            f"g(r)={rdf[right_base_idx]:.3f}"
+        )
+        """
 
+    # First physically meaningful peak
+    first_peak_index = peak_indices[0]
+
+    # Position of the first RDF peak
+    peak_position = round(
+        float(bins[first_peak_index]),
+        3,
+    )
+
+    # Minimum on the right-hand side that defines
+    # the prominence of this peak
+    first_min_index = properties["right_bases"][0]
+    """
+    print(
+        f"Selected first peak: "
+        f"r={bins[first_peak_index]:.3f} Å, "
+        f"g(r)={rdf[first_peak_index]:.3f}"
+    )
+
+    print(
+        f"Selected first minimum: "
+        f"r={bins[first_min_index]:.3f} Å, "
+        f"g(r)={rdf[first_min_index]:.3f}"
+    )
+    """
+
+    # Coordination-shell cutoff
     x_val = round(
         float(bins[first_min_index]),
         3,
     )
 
+    # Coordination number evaluated at the minimum,
+    # NOT at the peak
     y_coord = round(
         float(
             np.interp(
@@ -140,36 +122,8 @@ def obtain_rdf_coord(bins, rdf, coord_numbers):
         3,
     )
 
-    return x_val, y_coord
+    return x_val, y_coord, peak_position
 
-def obtain_rdf_coord_old(bins, rdf, coord_numbers):
-    deriv_sign_changes = np.diff(np.sign(np.diff(rdf)))
-    peak_index = np.where(deriv_sign_changes < 0)[0] + 1
-
-    if len(peak_index) == 0:
-        raise ValueError("No peak found in RDF data.")
-
-    # Reject noise peaks by RDF height
-    peak_ptr = 0
-    while peak_ptr < len(peak_index) and rdf[peak_index[peak_ptr]] < 1:
-        peak_ptr += 1
-
-    if peak_ptr >= len(peak_index):
-        raise ValueError("No physical RDF peak found (all peaks below threshold).")
-
-    first_peak_index = peak_index[peak_ptr]
-
-    min_after_peak_index = np.where(deriv_sign_changes[first_peak_index:] > 0)[0] + first_peak_index + 1
-
-    if len(min_after_peak_index) == 0:
-        raise ValueError("No minimum found after the first peak in RDF data.")
-
-    first_min_index = min_after_peak_index[0]
-
-    x_val = round(float(bins[first_min_index]), 3)
-    y_coord = round(float(np.interp(x_val, bins, coord_numbers)), 3)
-
-    return x_val, y_coord
 
 def plot_rdf_coordination(
     bins,
@@ -341,13 +295,29 @@ def analyze_coordination_structure(
 
     
     order = ["ssip", "cip", "agg"]
+    labels = ["SSIP", "CIP", "AGG"]
     perc_map = {k: float(v.strip("%")) for k, v in zip(item_list, percent_list)}
     plot_vals = [perc_map.get(k, 0.0) for k in order]
+    # Match styling used in plot_population_heatmap()
+    rc("text", usetex=False)
+    rc("font", family="serif")
 
     fig, ax = plt.subplots(figsize=(4.2, 3.2))
-    bars = ax.bar(order, plot_vals,  width=0.35, edgecolor="black", linewidth=0.50)
+    blue = "#004474"
+    bars = ax.bar(labels, plot_vals,  width=0.35, color=blue, edgecolor="black", linewidth=0.50)
     ax.set_ylim(0, 100)
-    ax.set_ylabel("Percentage (%)")
+    ax.set_ylabel("Percentage (%)", fontsize=12)
+    # Larger x- and y-axis numbers/text
+    ax.tick_params(
+        axis="x",
+        labelsize=12,
+        length=0
+    )
+    ax.tick_params(
+        axis="y",
+        labelsize=12
+    )
+
     ax.grid(axis="y", linestyle=":", alpha=0.35)
 
     # Annotate the top of each bar
@@ -358,7 +328,7 @@ def analyze_coordination_structure(
             f"{v:.1f}%",
             ha="center",
             va="bottom",
-            fontsize=9,
+            fontsize=12,
         )
     plt.tight_layout()
     fig.savefig(plot_path, dpi=300, bbox_inches="tight")
@@ -472,19 +442,24 @@ def plot_population_heatmap(avg_population, png_path):
     rc("text", usetex=False)
     rc("font", family="serif")
 
-    n = min(21, avg_population.shape[0], avg_population.shape[1])
+    # Plot only a 10 × 10 matrix
+    n = min(11, avg_population.shape[0], avg_population.shape[1])
+
     matrix = avg_population[:n, :n].T
     matrix = np.flipud(matrix)
 
     mat_plot = matrix.copy()
     mat_plot[mat_plot <= 0] = 1e-12
 
-    # --- CHANGE 1: colormap ---
-    colors = ["#f8f9fb", "#5B656D", "#004474"]  # dark blue → blue → yellow
-    cmap = LinearSegmentedColormap.from_list("custom_blue_yellow", colors)
+    # --- colormap ---
+    colors = ["#f8f9fb", "#5B656D", "#004474"]
+    cmap = LinearSegmentedColormap.from_list(
+        "custom_blue_yellow", colors
+    )
     norm = LogNorm(vmin=1e-4, vmax=1e2)
 
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(8, 7))
+
     ax = sns.heatmap(
         mat_plot,
         annot=False,
@@ -496,24 +471,31 @@ def plot_population_heatmap(avg_population, png_path):
         cbar=True
     )
 
-    # --- CHANGE 2: colorbar formatting ---
+    # --- colorbar formatting ---
     cbar = ax.collections[0].colorbar
     cbar.ax.minorticks_off()
     cbar.set_ticks([10**i for i in range(-3, 3)])
     cbar.set_ticklabels([
-        r"$10^{-3}$", r"$10^{-2}$", r"$10^{-1}$",
-        r"$10^{0}$", r"$10^{1}$", r"$10^{2}$"
+        r"$10^{-3}$",
+        r"$10^{-2}$",
+        r"$10^{-1}$",
+        r"$10^{0}$",
+        r"$10^{1}$",
+        r"$10^{2}$"
     ])
-    cbar.ax.tick_params(labelsize=20)  # ↓ smaller colorbar numbers
+    cbar.ax.tick_params(labelsize=20)
 
-    # --- CHANGE 3: axis ticks & labels ---
-    x_labels = list(range(0, n))
+    # --- axis ticks & labels ---
+    x_labels = list(range(n))
     y_labels = list(range(n - 1, -1, -1))
 
-    ax.set_xticks(np.arange(0.5, n, 4))
-    ax.set_yticks(np.arange(0.5, n, 4))
-    ax.set_xticklabels(x_labels[0::4], fontsize=20)
-    ax.set_yticklabels(y_labels[0::4], fontsize=20)
+    # One tick for every box
+    ax.set_xticks(np.arange(n) + 0.5)
+    ax.set_yticks(np.arange(n) + 0.5)
+
+    ax.set_xticklabels(x_labels, fontsize=20)
+    ax.set_yticklabels(y_labels, fontsize=20)
+
     ax.tick_params(length=0)
 
     # --- frame ---
@@ -528,21 +510,32 @@ def plot_population_heatmap(avg_population, png_path):
             ax.add_patch(
                 Rectangle(
                     (j + 0.05, i + 0.05),
-                    0.9, 0.9,
+                    0.9,
+                    0.9,
                     fill=False,
                     edgecolor="#000000",
                     lw=0.5
                 )
             )
 
-    ax.plot([0, n], [n, 0], lw=1, color="#002845")
+    # --- diagonal ---
+    ax.plot(
+        [0, n],
+        [n, 0],
+        lw=1,
+        color="#002845"
+    )
 
-    # --- CHANGE 4: axis label size ---
+    # --- axis labels ---
     ax.set_xlabel(r"$n+$", fontsize=26, labelpad=20)
     ax.set_ylabel(r"$n-$", fontsize=26, labelpad=20)
 
     plt.tight_layout()
-    plt.savefig(png_path, dpi=300, bbox_inches="tight")
+    plt.savefig(
+        png_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
     plt.close()
 
 def cip_finder(

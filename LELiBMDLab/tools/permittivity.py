@@ -4,12 +4,12 @@ import MDAnalysis as mda
 import LELiBMDLab.tools.constants as const
 
 alphas = {
-    "EC":  0.9291,
-    "DMC": 1.9028,
-    "EMC": 2.0548,
-    "PC":  0.9888,
-    "DEC": 2.3009,
-    "DME": 0.8842,
+    "EC":  0.9123,
+    "DMC": 1.7903,
+    "EMC": 2.0761,
+    "PC":  1.0284,
+    "DEC": 0.9874,
+    "DME": 0.8866,
 }
 
 # ---------- DIPOLE CORRECTION FITS ----------
@@ -112,144 +112,6 @@ def corrected_cip_dipoles(
     print(f"\nAverage number of CIPs per frame: {avg_cips_per_frame:.2f}")
 
     return cip_dipoles_by_frame
-
-
-def permittivity_corr_old(
-    start: int,
-    end: int,
-    run,
-    temperature,
-    volume_m3,
-    cip_dipoles_by_frame=None,
-):
-    make_whole = True
-    charge_tolerance = 1e-6
-
-    atoms = run.atoms
-
-    grouped_atomgroups = {}
-
-    # ---------- select neutral solvent molecules ----------
-    for name, selection in solvent_selections.items():
-
-        ag = atoms.select_atoms(selection)
-
-        if ag.n_atoms == 0:
-            continue
-
-        neutral_fragments = [
-            frag
-            for frag in ag.fragments
-            if abs(frag.total_charge()) <= charge_tolerance
-        ]
-
-        if not neutral_fragments:
-            continue
-
-        grouped_ag = neutral_fragments[0]
-
-        for frag in neutral_fragments[1:]:
-            grouped_ag += frag
-
-        grouped_atomgroups[name] = grouped_ag
-
-    if not grouped_atomgroups:
-        raise ValueError(
-            "No neutral solvent atomgroups found."
-        )
-
-    # ---------- dipole accumulators ----------
-    M_total = np.zeros(3)
-    M2_total = np.zeros(3)
-
-    n_frames = 0
-
-    # ---------- trajectory loop ----------
-    for ts in run.trajectory[start:end]:
-
-        # ======================================================
-        # Corrected solvent dipole
-        # ======================================================
-        M_solv = np.zeros(3)
-
-        for name, ag in grouped_atomgroups.items():
-
-            if make_whole:
-                ag.unwrap(compound="fragments")
-
-            alpha = alphas.get(name, 1.0)
-
-            M_type = np.dot(
-                ag.charges,
-                ag.positions,
-            )
-
-            #npj Comput Mater 9, 175 (2023)
-            # M_corrected = alpha * M_solv
-            M_type *= alpha
-
-            M_solv += M_type
-
-        # ======================================================
-        # Corrected CIP dipole
-        # ======================================================
-        if cip_dipoles_by_frame is None:
-
-            # Pure-solvent calculation
-            M_cip = np.zeros(3)
-
-        else:
-
-            # Solution calculation
-            M_cip = cip_dipoles_by_frame.get(
-                ts.frame,
-                np.zeros(3),
-            )
-
-        # ======================================================
-        # Total dipole for this frame
-        #
-        # M = M_solv + M_cip
-        # ======================================================
-        frame_M = M_solv + M_cip
-        
-        # Important: square only after adding both contributions
-        M_total += frame_M
-        M2_total += frame_M * frame_M
-
-        n_frames += 1
-
-    if n_frames == 0:
-        raise ValueError(
-            "No trajectory frames were analysed."
-        )
-
-    # ---------- averages ----------
-    M_mean = M_total / n_frames
-    M2_mean = M2_total / n_frames
-
-    # Dipole fluctuation in (e·Å)^2
-    fluct = M2_mean - M_mean * M_mean
-
-    # Convert fluctuations to SI units
-    fluct_si = fluct * const.dipole_conv
-
-    # Component-wise permittivity
-    eps = (
-        1
-        + fluct_si
-        / (
-            const.eps0
-            * const.kB
-            * temperature
-            * volume_m3
-        )
-    )
-
-    # Equivalent to the 1/3 factor in the isotropic equation
-    eps_mean = eps.mean()
-
-    return eps_mean
 
 
 def permittivity_corr(
