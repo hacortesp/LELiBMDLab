@@ -1,7 +1,0 @@
-criterion_name,features_used,cluster_id,cluster_size,representative_row_index,representative_doi,mean_conductivity,mean_weighted_permittivity,mean_weighted_viscosity_mPa_s_25C,mean_salt_conc_x_weighted_permittivity,mean_salt_conc_x_weighted_viscosity
-weightedperm_weightedvisc,"weighted_permittivity, weighted_viscosity_mPa_s_25C",1,185,106,10.1016/j.jpowsour.2011.06.030,9.046689114405407,46.084270270270274,1.2465189189189192,51.34339027054595,1.3887046516591892
-weightedperm_weightedvisc,"weighted_permittivity, weighted_viscosity_mPa_s_25C",2,81,3593,10.1149/1.1344281,5.759504119814814,65.39092592592593,2.5171666666666668,65.39092592592593,2.5171666666666668
-weightedperm_weightedvisc,"weighted_permittivity, weighted_viscosity_mPa_s_25C",3,149,23,10.1016/j.electacta.2008.04.023,6.503939796494406,29.25759060402684,1.0400731543624162,35.58058119617111,1.2635969867414927
-weightedperm_weightedvisc,"weighted_permittivity, weighted_viscosity_mPa_s_25C",4,55,3786,10.1149/1.1344281,4.824809453072728,7.207090909090907,0.3996545454545456,3.7379999999999995,0.21174545454545463
-weightedperm_weightedvisc,"weighted_permittivity, weighted_viscosity_mPa_s_25C",5,23,13616,10.1016/0378-7753(91)80004-H,4.470289855086956,77.47391304347828,2.201304347826088,77.47391304347828,2.201304347826088
-weightedperm_weightedvisc,"weighted_permittivity, weighted_viscosity_mPa_s_25C",6,2,127,10.1016/j.jpowsour.2011.07.071,8.776666667,67.525,1.5724999999999998,67.525,1.5724999999999998

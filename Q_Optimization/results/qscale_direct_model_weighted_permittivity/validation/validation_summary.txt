@@ -1,8 +1,0 @@
-Direct q_scale model validation
-==============================
-model: results/qscale_direct_model_weighted_permittivity/qscale_model_train_split.joblib
-systems: 6
-q_scale MAE: 0.0274823
-q_scale RMSE: 0.0318137
-conductivity MAE: 1.08991 mS/cm
-conductivity RMSE: 1.30958 mS/cm

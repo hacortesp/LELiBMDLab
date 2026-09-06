@@ -1,2 +1,0 @@
-criterion_name,features_used,number_of_samples,number_of_features,best_k,best_candidate_k,best_silhouette_score,calinski_harabasz_score,davies_bouldin_score,one_cluster_fallback_used,skip_reason
-saltconc_weightedperm_weightedvisc,"salt_conc_x_weighted_permittivity, salt_conc_x_weighted_viscosity",495,2,5,5,0.7972778726861223,2570.667220540388,0.2782959436437753,False,

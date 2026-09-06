@@ -1,2 +1,0 @@
-model,n_train,n_test,n_train_clusters,n_test_clusters,mae,rmse,r2
-shallow_tree,255,240,4,2,0.054715296412244485,0.06922245351706033,-0.39651983497606835

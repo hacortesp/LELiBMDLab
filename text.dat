@@ -1,0 +1,103 @@
+===== Electrolyte information =====
+Work directory: 0.25M_ECEMC_T293/
+Volume: 1.2087e-19 cm^3
+Density: 1.1344 g/cm^3
+Molarity: 0.2610 mol/L
+Molality: 0.2384 mol/kg
+
+===== Calculating permittivity =====
+Solvent permittivity used for the CIP correction: 12.1912
+Analysis requested from 18000.00 ps.
+First analyzed frame: 18000, corresponding to approximately 18000.00 ps.
+Available frames after the starting point: 12001.
+Generating 2 complete windows of 6000 frames (6000.00 ps each).
+Ignoring 1 trailing frames (1.00 ps) because they do not form a complete window.
+Cation selection: Li
+Anion selection: PF6
+Cation-anion distance: 4.3250 Å
+Cation-EMC distance: 4.1750 Å
+Cation-EC distance: 4.1750 Å
+Determined CIP cutoff distance: 4.3250 Å
+
+Permittivity window 1/2: frames [18000, 24000), time [18000.00, 24000.00) ps
+P1–LI Distance cutoff (Å): 4.325
+
+Average number of CIPs per frame: 1.04
+Solution permittivity for window 1: 11.147321
+
+Permittivity window 2/2: frames [24000, 30000), time [24000.00, 30000.00) ps
+P1–LI Distance cutoff (Å): 4.325
+
+Average number of CIPs per frame: 1.17
+Solution permittivity for window 2: 11.041570
+
+Mean solution permittivity: 11.094446
+Standard deviation: 0.074778
+Standard error: 0.052876
+Dielectric constant solusion SPLIT = 11.0944
+
+===== Calculating permittivity =====
+Solvent permittivity used for the CIP correction: 12.1912
+Cation selection: Li
+Anion selection: PF6
+Cation-anion distance: 4.3250 Å
+Cation-EMC distance: 4.1750 Å
+Cation-EC distance: 4.1750 Å
+Determined CIP cutoff distance: 4.3250 Å
+P1–LI Distance cutoff (Å): 4.325
+
+Average number of CIPs per frame: 1.04
+
+Permittivity decomposition:
+  Pure-solvent reference:       12.191200
+  Solvent in solution:          10.859741
+  CIP contribution:             +0.213000
+  Solvent-CIP cross term:       +0.074580
+  Reconstructed total:          11.147321
+  Direct total:                 11.147321
+
+Component-wise decomposition:
+  Solvent epsilon:              [10.21000266 11.03026776 11.33895294]
+  CIP delta epsilon:            [0.19968251 0.24198974 0.19732921]
+  Cross delta epsilon:          [ 0.17394609 -0.14052799  0.19032114]
+  Total epsilon:                [10.58363126 11.1317295  11.7266033 ]
+
+Fluctuation validation:
+  Direct fluctuation:           [161.63278496 170.87673895 180.9095861 ]
+  Reconstructed fluctuation:    [161.63278496 170.87673895 180.9095861 ]
+  Maximum reconstruction error: 4.263256e-13 (eÅ)^2
+Dielectric constant solusion = 11.1473
+
+Solvent permittivity used for the CIP correction: 12.1912
+Cation selection: Li
+Anion selection: PF6
+Cation-anion distance: 4.3250 Å
+Cation-EMC distance: 4.1750 Å
+Cation-EC distance: 4.1750 Å
+Determined CIP cutoff distance: 4.3250 Å
+P1–LI Distance cutoff (Å): 4.325
+
+Average number of CIPs per frame: 1.17
+
+Permittivity decomposition:
+  Pure-solvent reference:       12.191200
+  Solvent in solution:          10.604586
+  CIP contribution:             +0.246154
+  Solvent-CIP cross term:       +0.190830
+  Reconstructed total:          11.041570
+  Direct total:                 11.041570
+
+Component-wise decomposition:
+  Solvent epsilon:              [11.94808258 10.73762449  9.12804954]
+  CIP delta epsilon:            [0.31430832 0.22871049 0.19544311]
+  Cross delta epsilon:          [0.24570205 0.23718661 0.08960276]
+  Total epsilon:                [12.50809295 11.20352159  9.41309542]
+
+Fluctuation validation:
+  Direct fluctuation:           [194.08980412 172.08754878 141.8911064 ]
+  Reconstructed fluctuation:    [194.08980412 172.08754878 141.8911064 ]
+  Maximum reconstruction error: 1.989520e-13 (eÅ)^2
+Dielectric constant solusion = 11.0416
+
+
+Time elapsed = 13.6914 minutes

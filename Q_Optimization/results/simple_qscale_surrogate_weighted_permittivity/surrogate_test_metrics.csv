@@ -1,2 +1,0 @@
-feature_set,model,target_transform,n_train,n_test,n_train_groups,n_test_groups,mae,rmse,r2,transformed_mae,transformed_rmse,transformed_r2
-qscale_permittivity,linear,log1p,50,15,10,3,2.6351820440619833,3.4110946329534153,0.17550182943269854,0.5195707563281512,0.7726778559198365,0.03308793824666223

@@ -1,39 +1,38 @@
 ===== Electrolyte information =====
-Work directory: 0p5MLiTFSI_DME_298K
-Density: 0.9627 g·cm^-3
-Concentration: 0.53 mol L^-1
-Molality: 0.66 mol kg^-1
+Work directory: 1MLiClO4_DMC_T298K
+Volume: 1.2172e-19 cm^3
+Density: 1.1497 g/cm^3
+Molarity: 1.0232 mol/L
+Molality: 0.9830 mol/kg
 
-===== Calculating permittivity =====
-Solvent permittivity used for the CIP correction: 7.2120
-Cation selection: Li
-Anion selection: TFSI
-Cation-anion distance: 5.1250 Å
-Cation-DME distance: 3.9250 Å
-Determined CIP cutoff distance: 5.1250 Å
-N1–LI Distance cutoff (Å): 6.0
+===== Calculating Thermodynamic Factor ====
+xi = 1.1377
 
-Average number of CIPs per frame: 9.77
-
-Permittivity decomposition:
-  Pure-solvent reference:       7.212000
-  Solvent in solution:          5.132930
-  CIP contribution:             +3.420248
-  Solvent-CIP cross term:       +1.313777
-  Reconstructed total:          9.866955
-  Direct total:                 9.866955
-
-Component-wise decomposition:
-  Solvent epsilon:              [5.07763174 5.27369044 5.04746805]
-  CIP delta epsilon:            [3.82323124 3.36552795 3.07198392]
-  Cross delta epsilon:          [1.43037991 1.0884081  1.42254343]
-  Total epsilon:                [10.33124289  9.72762649  9.5419954 ]
-
-Fluctuation validation:
-  Direct fluctuation:           [156.87399086 146.72617732 143.6054043 ]
-  Reconstructed fluctuation:    [156.87399086 146.72617732 143.6054043 ]
-  Maximum reconstruction error: 5.400125e-13 (eÅ)^2
-Dielectric constant = 9.8670
+===== Calculating salt diffusivity =====
+--- summary ---
+values = [-0.87694579 -0.79555188  0.17858393  0.10611407 -0.58440943]
+mean   = -0.3944
+std = 0.5022
+stderr = 0.2246
+L++ = [2.47651453e-10 9.71357735e-11 1.91630827e-10 1.64309782e-10
+ 1.28666235e-10]
+L-- = [2.95605448e-10 1.63292148e-10 2.09623799e-10 1.88871382e-10
+ 1.72137331e-10]
+L+- = [2.58024407e-10 1.10266991e-10 1.78760004e-10 1.52232324e-10
+ 1.34742664e-10]
+z+ = 0.8, z- = -0.8
+ν+ = 1, ν- = 1, ν = 2
+Number of salt formula units = 75
+Salt concentration = 1.0232e+03 mol m⁻³
+--- salt diffusivity summary ---
+ξ      = 1.1377e+00
+values = [1.34278232e-05 5.11407795e-06 1.03502500e-05 8.88857616e-06
+ 7.02461622e-06] cm² s⁻¹
+mean   = 8.9611e-06 cm² s⁻¹
+std    = 3.1795e-06 cm² s⁻¹
+stderr = 1.4219e-06 cm² s⁻¹
+Results:
+D_salt = 8.9611e-06 ± 1.4219e-06 cm^2 s⁻¹
 
 
-Time elapsed = 4.0653 minutes
+Time elapsed = 4.5661 minutes

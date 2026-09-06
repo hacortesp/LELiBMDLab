@@ -1,6 +1,0 @@
-k,silhouette_score,status
-2,0.9322610428852918,evaluated
-3,0.9647043758791508,evaluated
-4,0.9859186746987951,evaluated
-5,1.0,evaluated
-6,,skipped_too_few_unique_values

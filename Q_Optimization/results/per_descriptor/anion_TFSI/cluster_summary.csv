@@ -1,3 +1,0 @@
-descriptor_name,selected_k,best_silhouette_score,cluster_id,cluster_size,representative_row_index,representative_doi,cluster_mean_descriptor_value,cluster_std_descriptor_value
-anion_TFSI,2,1.0,1,127,119,10.1016/j.jpowsour.2011.07.071,1.0,0.0
-anion_TFSI,2,1.0,2,371,23,10.1016/j.electacta.2008.04.023,0.0,0.0

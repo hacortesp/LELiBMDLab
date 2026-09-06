@@ -1,8 +1,0 @@
-metric,value
-MAE,0.040000000000000015
-RMSE,0.06055300708194985
-median_absolute_error,0.04999999999999993
-exact_qscale_accuracy,0.4666666666666667
-within_one_step_accuracy,0.8
-macro_F1,0.4467509004094369
-balanced_accuracy,0.45

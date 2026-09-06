@@ -1,2 +1,0 @@
-model,target_transform,n_train,n_test,n_train_groups,n_test_groups,mae,rmse,r2,transformed_mae,transformed_rmse,transformed_r2
-extra_trees,log1p,50,15,10,3,3.4433457105809624,5.803783758990312,-1.3868471365670696,0.5762560175467148,1.0760771319036153,-0.8753263250484078

@@ -1,3 +1,0 @@
-feature,coefficient,importance,importance_type,selected_model,feature_set
-numeric__q_scale,-0.19982951186679973,0.19982951186679973,standardized_coefficient,linear,qscale_permittivity
-numeric__weighted_permittivity,0.036970359604837,0.036970359604837,standardized_coefficient,linear,qscale_permittivity

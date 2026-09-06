@@ -1,6 +1,0 @@
-salt_type,num_systems,num_simulation_points,appears_in_combined_parity_plot,diagnostic
-PF6,36,178,True,present in plot
-ClO4,9,45,True,present in plot
-TFSI,19,95,True,present in plot
-FSI,5,25,True,present in plot
-BF4,6,30,True,present in plot
