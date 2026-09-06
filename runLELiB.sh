@@ -3,10 +3,10 @@
 
 python lelib_mdlab.py \
   -box 50.0 \
-  -anion_name TFSI \
-  -salt-conc 0.5 \
-  -workdir 0p5MLiTFSI_DME_298K \
-  -solvents DME \
+  -anion_name ClO4 \
+  -salt-conc 1.0 \
+  -workdir 1MLiClO4_DMC_T298K \
+  -solvents DMC \
   -solvent-fracs 1.0 \
   -charge-scale 0.80 \
   -temperature 298 \

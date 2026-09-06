@@ -758,7 +758,7 @@ class TrajAnalysis:
     ):
 
         # ---------- cation-anion distance ----------
-        x_cat_an, _ = self.coordination_number(
+        x_cat_an, _, x_cat_peak = self.coordination_number(
             cation_key,
             anion_key,
             write_files=False,

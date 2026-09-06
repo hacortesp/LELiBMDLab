@@ -20,8 +20,8 @@ class GROMACSrun:
         gmx_exec: str = "gmx",
         gmx_mpi_exec: str = "gmx_mpi",
         ntasks_env: str = "SLURM_NTASKS",
-        steps : int,
-        time_step_ps : float        
+        steps: int,
+        time_step_ps: float,
     ) -> None:
         self.workdir = Path(workdir)
         self.workdir.mkdir(parents=True, exist_ok=True)
@@ -60,24 +60,22 @@ class GROMACSrun:
     def _commands_local(self) -> list[str]:
         print("\n\n\n===== Running GROMACS in LOCAL mode =====\n")
 
-        commands = [
-            f"{self.gmx_exec} grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr",
-            f"{self.gmx_exec} mdrun -v -deffnm em",
-        ]
-
         if self.equilibration:
-            commands.extend([
+            commands = [
+                f"{self.gmx_exec} grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr",
+                f"{self.gmx_exec} mdrun -v -deffnm em",
+
                 f"{self.gmx_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
                 f"{self.gmx_exec} mdrun -deffnm npt_eq",
 
                 self._command_extract_volume("npt_eq.edr", "volume.xvg"),
 
                 f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
-            ])
+            ]
         else:
-            commands.append(
-                f"{self.gmx_exec} grompp -f nvt_prod.mdp -c em.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1"
-            )
+            commands = [
+                f"{self.gmx_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1"
+            ]
 
         commands.extend([
             f"{self.gmx_exec} mdrun -deffnm nvt_prod_wrap",
@@ -91,7 +89,6 @@ class GROMACSrun:
 
         return commands
 
-
     def _commands_parallel(self) -> list[str]:
         ntasks = os.environ.get(self.ntasks_env)
 
@@ -100,24 +97,22 @@ class GROMACSrun:
 
         print("\n\n\n===== Running GROMACS in PARALLEL mode =====\n")
 
-        commands = [
-            f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr",
-            f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm em",
-        ]
-
         if self.equilibration:
-            commands.extend([
+            commands = [
+                f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f em.mdp -c conf.pdb -p topol.top -o em.tpr",
+                f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm em",
+
                 f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f npt_eq.mdp -c em.gro -p topol.top -o npt_eq.tpr -maxwarn 1",
                 f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm npt_eq",
 
                 self._command_extract_volume("npt_eq.edr", "volume.xvg"),
 
                 f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1",
-            ])
+            ]
         else:
-            commands.append(
-                f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c em.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1"
-            )
+            commands = [
+                f"mpirun -np 1 {self.gmx_mpi_exec} grompp -f nvt_prod.mdp -c npt_eq.gro -p topol.top -o nvt_prod_wrap.tpr -maxwarn 1"
+            ]
 
         commands.extend([
             f"mpirun -np {ntasks} {self.gmx_mpi_exec} mdrun -deffnm nvt_prod_wrap",
